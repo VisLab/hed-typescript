@@ -5,7 +5,7 @@
 
 import path from 'node:path'
 
-import { BidsFileAccessor } from '../datasetParser'
+import { BidsFileAccessor } from '../accessors/file'
 import { BidsHedIssue } from './issues'
 import { BidsJsonFile, BidsSidecar } from './json'
 import { BidsTsvFile } from './tsv'
