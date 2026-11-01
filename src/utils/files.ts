@@ -1,5 +1,5 @@
 /**
- * This module holds asynchronous functions for reading files.
+ * This module holds the asynchronous function for reading local files (Node.js only).
  * @module
  */
 
@@ -25,23 +25,4 @@ export async function readFile(fileName: string): Promise<string> {
       'Illegal error type when reading local file',
     )
   }
-}
-
-/**
- * Read a remote file using HTTPS.
- *
- * @param url - The remote URL.
- * @returns A promise with the file contents.
- * @throws {IssueError} If the network read failed.
- */
-export async function readHTTPSFile(url: string): Promise<string> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    IssueError.generateAndThrow('networkReadError', {
-      url: url,
-      statusCode: response.status.toString(),
-      statusText: response.statusText,
-    })
-  }
-  return response.text()
 }

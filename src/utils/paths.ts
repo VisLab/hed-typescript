@@ -3,8 +3,6 @@
  * @module
  */
 
-import path from 'node:path'
-
 import zip from 'lodash/zip'
 
 import { BidsSidecar } from '../bids/types/json'
@@ -389,6 +387,39 @@ export function parseBidsFilename(filePath: string): ParsedBidsFilename {
 
   return nameDict
 }
+/**
+ * Get the directory name of a relative BIDS path ('/' separators), as POSIX `path.dirname` gives it.
+ *
+ * @remarks
+ * BIDS relative paths always use '/', in Node.js and in a browser, so no platform path module is needed.
+ *
+ * @param relativePath - The relative path of a file.
+ * @returns The directory part of the path, or '.' for a file at the top level.
+ */
+export function getDirName(relativePath: string): string {
+  const lastSlash = relativePath.lastIndexOf('/')
+  if (lastSlash === -1) {
+    return '.'
+  } else if (lastSlash === 0) {
+    return '/'
+  }
+  return relativePath.substring(0, lastSlash)
+}
+
+/**
+ * Split a relative BIDS path ('/' separators) into its parts, as POSIX `path.parse` gives them.
+ *
+ * @param relativePath - The relative path of a file.
+ * @returns The directory ('' at the top level), the file name, and the file name without its extension.
+ */
+export function parseRelativePath(relativePath: string): { dir: string; base: string; name: string } {
+  const lastSlash = relativePath.lastIndexOf('/')
+  const dir = lastSlash === -1 ? '' : lastSlash === 0 ? '/' : relativePath.substring(0, lastSlash)
+  const base = relativePath.substring(lastSlash + 1)
+  const lastDot = base.lastIndexOf('.')
+  const name = lastDot > 0 ? base.substring(0, lastDot) : base
+  return { dir, base, name }
+}
 
 /**
  * Filter a list of JSON sidecar paths to find candidates for a given TSV file.
@@ -400,7 +431,7 @@ export function parseBidsFilename(filePath: string): ParsedBidsFilename {
  */
 export function _getCandidates(jsonList: string[], tsvDir: string, tsvParsed: ParsedBidsFilename): string[] {
   return jsonList.filter((jsonPath) => {
-    const jsonDir = path.dirname(jsonPath)
+    const jsonDir = getDirName(jsonPath)
 
     // Sidecar must be in the tsv file's directory hierarchy.
     if (!isSubpath(tsvDir, jsonDir)) {
@@ -434,8 +465,8 @@ export function _getCandidates(jsonList: string[], tsvDir: string, tsvParsed: Pa
  */
 export function _sortCandidates(candidates: string[]): void {
   candidates.sort((a, b) => {
-    const aDir = path.dirname(a)
-    const bDir = path.dirname(b)
+    const aDir = getDirName(a)
+    const bDir = getDirName(b)
     if (aDir.length !== bDir.length) {
       return aDir.length - bDir.length
     }
@@ -468,7 +499,7 @@ export function getMergedSidecarData(
   jsonList: string[],
   sidecarMap: Map<string, BidsSidecar>,
 ): Record<string, unknown> {
-  const tsvDir = path.dirname(tsvPath)
+  const tsvDir = getDirName(tsvPath)
   const tsvParsed = parseBidsFilename(tsvPath)
 
   // 1. Filter to find applicable sidecars
@@ -478,7 +509,7 @@ export function getMergedSidecarData(
   _sortCandidates(candidates)
   // 3. Check for conflicts
   const groupedByDir = candidates.reduce((acc, xpath) => {
-    const dir = path.dirname(xpath)
+    const dir = getDirName(xpath)
     if (!acc.has(dir)) {
       acc.set(dir, [])
     }

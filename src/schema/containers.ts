@@ -22,9 +22,24 @@ export class HedSchema {
   readonly prefix: string
 
   /**
+   * The HED schema version.
+   */
+  readonly version: string
+
+  /**
+   * The HED library schema name, or the empty string for a standard schema.
+   */
+  readonly library: string
+
+  /**
+   * The standard HED schema version this schema is linked to.
+   */
+  readonly withStandard: string | undefined
+
+  /**
    * Constructor.
    *
-   * @param xmlData - The schema XML data.
+   * @param xmlData - The schema XML data (of the schema that names the merge group).
    * @param entries - A collection of schema entries.
    * @param prefix - This schema's prefix in the active schema set.
    */
@@ -33,14 +48,16 @@ export class HedSchema {
     this.prefix = prefix
 
     const rootElement = xmlData.HED
-    const library = rootElement.$.library ?? ''
-    const version = rootElement.$.version
+    this.version = rootElement.$.version
+    this.library = rootElement.$.library ?? ''
 
-    if (!library && version && lt(version, '8.0.0')) {
+    if (!this.library && this.version && lt(this.version, '8.0.0')) {
       IssueError.generateAndThrow('deprecatedStandardSchemaVersion', {
-        version,
+        version: this.version,
       })
     }
+
+    this.withStandard = this.library ? rootElement.$.withStandard : this.version
   }
 }
 
