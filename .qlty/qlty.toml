@@ -20,7 +20,6 @@ exclude_patterns = [
   "**/.gitignore",
   "**/README*",
   "**/LICENSE",
-  ".codespellrc",
   "tests/*Data/**",
   "spec_tests/hed-tests/**"
 ]
