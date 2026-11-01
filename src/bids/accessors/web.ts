@@ -38,11 +38,22 @@ function _processFileList(fileInput: FileList | File[]): { datasetRootDirectory:
     return { datasetRootDirectory: '', fileMap: new Map<string, File>() }
   }
 
-  // Find dataset_description.json to determine the root path prefix.
-  const descriptionFile = fileList.find((f) => (f.webkitRelativePath || f.name).endsWith('dataset_description.json'))
+  // The root is the directory of the shallowest file named exactly dataset_description.json, so a derivative
+  // description (e.g. derivatives/pipeline/dataset_description.json) never wins, whatever the upload order.
+  let descriptionPath: string | undefined
+  let descriptionDepth = Infinity
+  for (const file of fileList) {
+    const filePath = file.webkitRelativePath || file.name
+    if (filePath !== 'dataset_description.json' && !filePath.endsWith('/dataset_description.json')) continue
+    const depth = filePath.split('/').length
+    if (depth < descriptionDepth) {
+      descriptionPath = filePath
+      descriptionDepth = depth
+    }
+  }
   let prefix = ''
-  if (descriptionFile) {
-    const filePath = descriptionFile.webkitRelativePath || descriptionFile.name
+  if (descriptionPath !== undefined) {
+    const filePath = descriptionPath
     const lastSlashIndex = filePath.lastIndexOf('/')
     if (lastSlashIndex > -1) {
       prefix = filePath.substring(0, lastSlashIndex)
@@ -109,7 +120,7 @@ export class BidsWebAccessor extends BidsFileAccessor<File> {
    * Read a file's content via the browser File API.
    *
    * @param relativePath - The relative path to the file within the dataset.
-   * @returns The file contents, or null if not found.
+   * @returns The file contents, or null if the file is not found or cannot be read.
    */
   public async getFileContent(relativePath: string): Promise<string | null> {
     const file = this.fileMap.get(relativePath)
@@ -117,7 +128,11 @@ export class BidsWebAccessor extends BidsFileAccessor<File> {
       return null
     }
     if (typeof file.text === 'function') {
-      return await file.text()
+      try {
+        return await file.text()
+      } catch {
+        return null // e.g. the uploaded file was changed or removed after selection
+      }
     }
     throw new Error(`Cannot read file ${relativePath}: File object in map lacks .text() method.`)
   }
