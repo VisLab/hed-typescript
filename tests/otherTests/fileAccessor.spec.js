@@ -1,6 +1,6 @@
-// filepath: i:\HEDJavascript\hed-javascript\tests\otherTests\datasetParser.spec.js
 import { describe, it, expect, beforeAll } from '@jest/globals'
-import { BidsFileAccessor, BidsDirectoryAccessor } from '../../src/bids/datasetParser'
+import { BidsFileAccessor } from '../../src/bids/accessors/file'
+import { BidsDirectoryAccessor } from '../../src/bids/accessors/directory'
 import path from 'node:path'
 
 describe('BidsFileAccessor', () => {

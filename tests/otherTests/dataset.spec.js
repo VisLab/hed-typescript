@@ -3,7 +3,8 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { toMatchIssue } from '../testHelpers/toMatchIssue'
 import { BidsDataset } from '../../src/bids/types/dataset'
-import { BidsDirectoryAccessor, BidsFileAccessor } from '../../src/bids/datasetParser'
+import { BidsFileAccessor } from '../../src/bids/accessors/file'
+import { BidsDirectoryAccessor } from '../../src/bids/accessors/directory'
 import { HedSchemas } from '../../src/schema/containers'
 
 expect.extend({
