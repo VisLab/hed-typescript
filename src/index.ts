@@ -10,8 +10,11 @@ export {
   BidsHedIssue,
   BidsFileAccessor,
   BidsDirectoryAccessor,
+  BidsWebAccessor,
   buildBidsSchemas,
 } from './bids'
+
+export { parseTSV } from './bids/tsvParser'
 
 export { IssueError, Issue } from './issues/issues'
 

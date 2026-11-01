@@ -1,6 +1,5 @@
 import path from 'node:path'
 import esbuild from 'esbuild'
-import { nodeModulesPolyfillPlugin } from 'esbuild-plugins-node-modules-polyfill'
 
 // Node.js target build
 await esbuild.build({
@@ -16,7 +15,10 @@ await esbuild.build({
   },
 })
 
-// Browser target build
+// Browser target build, consumed by Vite/Webpack browser bundlers.
+// The "browser" field in package.json redirects the two Node-only modules (src/schema/loader.ts and
+// src/bids/accessors/directory.ts) to their browser versions; esbuild honours that field when platform is 'browser'.
+// No Node.js module is bundled, so none is polyfilled.
 await esbuild.build({
   entryPoints: [path.join(process.cwd(), 'src', 'index.js')],
   loader: { '.xml': 'text' },
@@ -26,5 +28,4 @@ await esbuild.build({
   format: 'esm',
   external: ['pluralize'],
   platform: 'browser',
-  plugins: [nodeModulesPolyfillPlugin()],
 })

@@ -430,13 +430,18 @@ describe('HED schemas', () => {
       it('should build schemas from multiple partnered schemas', async () => {
         const versionString = '8.4.0, lang_1.1.0, score_2.1.0'
 
+        let schemas
         try {
-          const schemas = await buildSchemasFromVersion(versionString)
+          schemas = await buildSchemasFromVersion(versionString)
           assert.isNotNull(schemas, 'Schemas should not be null')
         } catch (issueError) {
           const issue = issueError.issue ?? ''
           assert.fail(`Schemas failed to load: ${issue}.`)
         }
+        // The listed standard schema is the base of the merge group.
+        assert.strictEqual(schemas.baseSchema.library, '')
+        assert.strictEqual(schemas.baseSchema.version, '8.4.0')
+        assert.strictEqual(schemas.baseSchema.withStandard, '8.4.0')
       })
 
       it('should handle version strings with prefix', async () => {
