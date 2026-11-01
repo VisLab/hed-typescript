@@ -11,9 +11,27 @@ import SchemaParser from './parser/schemaParser'
 import { SchemaSpec, SchemasSpec } from './specs'
 import { HedSchemaXMLCollection, type HedSchemaXMLObject } from './xmlType'
 import { IssueError, type IssueParameters } from '../issues/issues'
-import * as files from '../utils/files'
 import { splitStringTrimAndRemoveBlanks } from '../utils/string'
 import parseSchemaXML from '../utils/xml'
+
+/**
+ * Read a remote file using HTTPS.
+ *
+ * @param url - The remote URL.
+ * @returns A promise with the file contents.
+ * @throws {IssueError} If the network read failed.
+ */
+async function readHTTPSFile(url: string): Promise<string> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    IssueError.generateAndThrow('networkReadError', {
+      url: url,
+      statusCode: response.status.toString(),
+      statusText: response.statusText,
+    })
+  }
+  return response.text()
+}
 
 export default abstract class AbstractHedSchemaLoader {
   /**
@@ -207,7 +225,7 @@ export default abstract class AbstractHedSchemaLoader {
     } else {
       url = `https://raw.githubusercontent.com/hed-standard/hed-schemas/refs/heads/main/standard_schema/hedxml/HED${schemaDef.version}.xml`
     }
-    return this.loadSchemaFile(files.readHTTPSFile(url), 'remoteSchemaLoadFailed', { spec: JSON.stringify(schemaDef) })
+    return this.loadSchemaFile(readHTTPSFile(url), 'remoteSchemaLoadFailed', { spec: JSON.stringify(schemaDef) })
   }
 
   /**

@@ -3,15 +3,13 @@
  * @module bids/types/dataset
  */
 
-import path from 'node:path'
-
 import { BidsFileAccessor } from '../accessors/file'
 import { BidsHedIssue } from './issues'
 import { BidsJsonFile, BidsSidecar } from './json'
 import { BidsTsvFile } from './tsv'
 import { generateIssue, IssueError } from '../../issues/issues'
 import { type HedSchemas } from '../../schema/containers'
-import { getMergedSidecarData, organizedPathsGenerator } from '../../utils/paths'
+import { getMergedSidecarData, organizedPathsGenerator, parseRelativePath } from '../../utils/paths'
 import { parseJson } from '../../utils/string'
 
 type BidsFileAccessorConstructor<FileType> = {
@@ -284,7 +282,7 @@ export class BidsDataset<FileType> {
    *
    * @returns An array of issues found during sidecar validation.
    */
-  private validateSidecars(): BidsHedIssue[] {
+  public validateSidecars(): BidsHedIssue[] {
     let issues: BidsHedIssue[] = []
 
     for (const relativePath of organizedPathsGenerator(this.fileAccessor.organizedPaths, '.json')) {
@@ -305,7 +303,7 @@ export class BidsDataset<FileType> {
    *
    * @returns A promise that resolves to an array of issues found during TSV validation.
    */
-  private async validateTsvFiles(): Promise<BidsHedIssue[]> {
+  public async validateTsvFiles(): Promise<BidsHedIssue[]> {
     let issues: BidsHedIssue[] = []
     for (const [category, catMap] of this.fileAccessor.organizedPaths) {
       const tsvPaths = catMap.get('tsv') || []
@@ -331,7 +329,7 @@ export class BidsDataset<FileType> {
    */
   private async _validateTsvFile(tsvPath: string, category: string, jsonPaths: string[]): Promise<BidsHedIssue[]> {
     // Read the TSV file content -- if none do not proceed.
-    const parsedPath = path.parse(tsvPath)
+    const parsedPath = parseRelativePath(tsvPath)
     const tsvContents = await this.fileAccessor.getFileContent(tsvPath)
     if (tsvContents === null) {
       const message = `Could not read TSV file: ${tsvPath}`
@@ -367,7 +365,7 @@ export class BidsDataset<FileType> {
    * @returns The merged sidecar data object, or empty object if no applicable sidecars found.
    */
   private _getSidecarData(tsvPath: string, category: string, jsonPaths: string[]): Record<string, unknown> {
-    const parsedPath = path.parse(tsvPath)
+    const parsedPath = parseRelativePath(tsvPath)
 
     if (BidsFileAccessor.SPECIAL_DIRS.includes(category)) {
       const expectedJsonPath = `${parsedPath.dir ? parsedPath.dir + '/' : ''}${parsedPath.name}.json`
