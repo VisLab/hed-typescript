@@ -1,4 +1,4 @@
-import { BidsFileAccessor } from '../../../src/bids/datasetParser'
+import { BidsFileAccessor } from '../../../src/bids/accessors/file'
 import { buildSchemasFromVersion } from '../schema/init'
 
 /**
