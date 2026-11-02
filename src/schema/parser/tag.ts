@@ -37,16 +37,25 @@ export default class TagParser extends SchemaEntryWithAttributesParser<SchemaTag
   protected override _parseSchema(schemaXml: HedSchemaXMLObject): void {
     const tags = this.getAllTags(schemaXml)
     const shortTags = this.getShortTags(tags)
+    // Two tags of one name, or of names that differ only by case ("Item" under "Item"), would collapse into one entry
+    // or make a tag its own parent; report them first.
+    const tagKeys = [...shortTags.values()].map(lc)
+    if (new Set(tagKeys).size !== tagKeys.length) {
+      IssueError.generateAndThrow('duplicateTagsInSchema')
+    }
     const parentMap = this.generateParentMap(shortTags)
     const [booleanAttributeDefinitions, valueAttributeDefinitions, descriptions] = this._parseAttributeElements(
       tags.keys(),
       (element: NodeElement) => shortTags.get(element) ?? '',
     )
+    // A library never extends a tag of its partner by naming it again, so every tag of an unmerged file is marked;
+    // one that redeclares a partner tag is then rejected as in the merged form (addEntry).
+    this._addInLibrary(schemaXml, valueAttributeDefinitions, () => false)
     this.processRootedElements(parentMap, valueAttributeDefinitions)
 
     const tagUnitClassDefinitions = this.processTagUnitClasses(shortTags, valueAttributeDefinitions)
     const tagValueClassDefinitions = this.processTagValueClasses(shortTags, valueAttributeDefinitions)
-    this.processRecursiveAttributes(shortTags, booleanAttributeDefinitions)
+    this.processRecursiveAttributes(parentMap, booleanAttributeDefinitions)
 
     this.createSchemaTags(
       booleanAttributeDefinitions,
@@ -223,49 +232,52 @@ export default class TagParser extends SchemaEntryWithAttributesParser<SchemaTag
   }
 
   /**
-   * Process recursive schema attributes.
+   * Propagate recursive boolean attributes to descendant tags.
    *
-   * @param shortTags - The map from tag elements to shortened tag names.
-   * @param booleanAttributeDefinitions - The map from shortened tag names to their boolean schema attributes. Passed by reference.
+   * @remarks
+   * Descendants follow the parent map, which includes the tags placed by a "rooted" attribute, so a tag whose parent an
+   * earlier schema of the group declared (a rooted tag of an unmerged library) inherits from that parent tag. "#"
+   * children inherit nothing.
+   *
+   * @param parentMap - The parent map (lowercase short names), with the rooted tags placed.
+   * @param booleanAttributeDefinitions - The boolean attributes by short name, modified in place.
    */
   private processRecursiveAttributes(
-    shortTags: Map<NodeElement, string>,
+    parentMap: Map<string, string>,
     booleanAttributeDefinitions: Map<string, Set<SchemaAttribute>>,
   ): void {
-    const recursiveAttributeMap = this.generateRecursiveAttributeMap(shortTags, booleanAttributeDefinitions)
-
-    for (const [tagElement, recursiveAttributes] of recursiveAttributeMap) {
-      for (const childTag of this.getAllChildTags(tagElement)) {
-        const childTagName = getElementName(childTag)
-        const newBooleanAttributes =
-          booleanAttributeDefinitions.get(childTagName)?.union(recursiveAttributes) ??
-          new Set<SchemaAttribute>(recursiveAttributes)
-        booleanAttributeDefinitions.set(childTagName, newBooleanAttributes)
+    const recursiveAttributes = new Set(this.attributes.filter(([, attribute]) => attribute.recursive).values())
+    // The names are unique apart from case (_parseSchema).
+    const namesByKey = new Map([...booleanAttributeDefinitions.keys()].map((name) => [lc(name), name]))
+    const passedDown = new Map<string, Set<SchemaAttribute>>()
+    // The recursive attributes a tag passes to its children: its own and those it inherits.
+    const passedDownBy = (key: string): Set<SchemaAttribute> => {
+      const known = passedDown.get(key)
+      if (known !== undefined) {
+        return known
+      }
+      // Marked before recursing, so a cycle in the parent map (rooted tags anchored on each other) ends.
+      passedDown.set(key, new Set<SchemaAttribute>())
+      const name = namesByKey.get(key)
+      let attributes: Set<SchemaAttribute>
+      if (name === undefined) {
+        // A parent from an earlier schema of the group already carries everything it inherited.
+        attributes =
+          this.entryTypeMap.get(key)?.booleanAttributes.intersection(recursiveAttributes) ?? new Set<SchemaAttribute>()
+      } else {
+        const own = booleanAttributeDefinitions.get(name)!.intersection(recursiveAttributes)
+        const parentKey = parentMap.get(key)
+        attributes = parentKey === undefined ? own : own.union(passedDownBy(parentKey))
+      }
+      passedDown.set(key, attributes)
+      return attributes
+    }
+    for (const name of booleanAttributeDefinitions.keys()) {
+      const parentKey = parentMap.get(lc(name))
+      if (parentKey !== undefined && !name.endsWith('-#')) {
+        booleanAttributeDefinitions.set(name, booleanAttributeDefinitions.get(name)!.union(passedDownBy(parentKey)))
       }
     }
-  }
-
-  /**
-   * Generate a map from tags to their recursive attributes.
-   *
-   * @param shortTags - The map from tag elements to shortened tag names.
-   * @param booleanAttributeDefinitions - The map from shortened tag names to their boolean schema attributes. Passed by reference.
-   */
-  private generateRecursiveAttributeMap(
-    shortTags: Map<NodeElement, string>,
-    booleanAttributeDefinitions: Map<string, Set<SchemaAttribute>>,
-  ): Map<NodeElement, Set<SchemaAttribute>> {
-    const recursiveAttributes = new Set(this.attributes.filter(([, attribute]) => attribute.recursive).values())
-    const recursiveAttributeMap = new Map<NodeElement, Set<SchemaAttribute>>()
-
-    for (const [tagElement, tagName] of shortTags) {
-      recursiveAttributeMap.set(
-        tagElement,
-        booleanAttributeDefinitions.get(tagName)?.intersection(recursiveAttributes) ?? new Set<SchemaAttribute>(),
-      )
-    }
-
-    return recursiveAttributeMap
   }
 
   /**
@@ -295,9 +307,15 @@ export default class TagParser extends SchemaEntryWithAttributesParser<SchemaTag
       const unitClasses = tagUnitClassDefinitions.get(name) ?? []
       const valueClasses = tagValueClassDefinitions.get(name) ?? []
       const parentTagName = parentMap.get(lc(name))
-      const parentTag = parentTagName
-        ? (this.schemaTags.get(parentTagName) ?? this.entryTypeMap.get(parentTagName))
-        : undefined
+      // A tag hangs under the parent an earlier schema of the group declared, which mergeSchemaEntries keeps over this
+      // schema's equivalent copy. A "#" child keeps this schema's copy: under a kept parent it is either a duplicate,
+      // compared as part of its parent in addEntry, or a new value child, which is rejected below.
+      const parentTag =
+        parentTagName === undefined
+          ? undefined
+          : name.endsWith('-#')
+            ? (this.schemaTags.get(parentTagName) ?? this.entryTypeMap.get(parentTagName))
+            : (this.entryTypeMap.get(parentTagName) ?? this.schemaTags.get(parentTagName))
 
       if (name.endsWith('-#')) {
         if (this.entryTypeMap.has(parentTagName!) && !this.entryTypeMap.has(lc(name))) {

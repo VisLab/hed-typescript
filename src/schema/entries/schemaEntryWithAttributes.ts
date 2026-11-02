@@ -1,5 +1,3 @@
-import { isEqual } from 'lodash'
-
 import SchemaEntry from './schemaEntry'
 import type SchemaAttribute from './attribute'
 import { IssueError } from '../../issues/issues'
@@ -59,7 +57,9 @@ export default class SchemaEntryWithAttributes extends SchemaEntry {
    *
    * @remarks
    *
-   * Schema entries with attributes are deemed equivalent if they have the same name and equivalent attributes.
+   * Entries with attributes are equivalent if they have the same name, description, boolean attributes, and value
+   * attributes (by name, values in any order), ignoring inLibrary and hedId. Attributes are compared by name, so
+   * entries of two separately loaded schemas can be compared.
    *
    * @param other - A schema entry to compare with this one.
    * @returns Whether the other entry is equivalent to this schema entry.
@@ -71,28 +71,36 @@ export default class SchemaEntryWithAttributes extends SchemaEntry {
     if (!super.equivalent(other)) {
       return false
     }
-    if (this.booleanAttributes.symmetricDifference(other.booleanAttributes).size > 0) {
+    if (this.booleanAttributeNames.symmetricDifference(other.booleanAttributeNames).size > 0) {
       return false
     }
-    if (this.valueAttributes.size !== other.valueAttributes.size) {
+    const compared = (entry: SchemaEntryWithAttributes): [string, string[]][] =>
+      [...entry.valueAttributeNames].filter(([name]) => !SchemaEntryWithAttributes.IGNORED_ATTRIBUTES.has(name))
+    const ours = compared(this)
+    const theirs = new Map(compared(other))
+    if (ours.length !== theirs.size) {
       return false
     }
-    for (const [key, value] of this.valueAttributes) {
-      if (SchemaEntryWithAttributes.IGNORED_ATTRIBUTES.has(key.name)) {
-        continue
-      }
-      const otherValue = other.valueAttributes.get(key)
-      if (
-        !otherValue ||
-        !isEqual(
-          value.toSorted((a, b) => a.localeCompare(b)),
-          otherValue.toSorted((a, b) => a.localeCompare(b)),
-        )
-      ) {
-        return false
-      }
+    return ours.every(
+      ([name, values]) => theirs.has(name) && SchemaEntryWithAttributes.sameValues(theirs.get(name)!, values),
+    )
+  }
+
+  /**
+   * Determine whether two lists of attribute values hold the same values in any order.
+   *
+   * @param first - The first list of values.
+   * @param second - The second list of values.
+   * @returns Whether the lists hold the same values.
+   */
+  private static sameValues(first: readonly string[], second: readonly string[]): boolean {
+    if (first.length !== second.length) {
+      return false
     }
-    return true
+    const sorted = (values: readonly string[]): string[] => [...values].map(String).sort((a, b) => a.localeCompare(b))
+    const sortedFirst = sorted(first)
+    const sortedSecond = sorted(second)
+    return sortedFirst.every((value, index) => value === sortedSecond[index])
   }
 
   /**
