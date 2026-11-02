@@ -62,6 +62,7 @@ export default class UnitClassParser extends SchemaDefinitionEntryParser<SchemaU
       }
       const [unitBooleanAttributeDefinitions, unitValueAttributeDefinitions, unitValueDescriptions] =
         this._parseAttributeElements(element.unit, getElementName)
+      this._addInLibrary(schemaXml, unitValueAttributeDefinitions, (name) => this.unitClassUnits.has(name))
       for (const [name, valueAttributes] of unitValueAttributeDefinitions) {
         const booleanAttributes = unitBooleanAttributeDefinitions.get(name) ?? new Set<SchemaAttribute>()
         const description = unitValueDescriptions.get(name)

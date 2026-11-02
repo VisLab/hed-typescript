@@ -53,7 +53,8 @@ export default class SchemaAttribute extends SchemaEntry {
    *
    * @remarks
    *
-   * Schema attributes are deemed equivalent if they have the same name and properties.
+   * Schema attributes are equivalent if they have the same name, description, and property names. Properties are
+   * compared by name, so attributes of two separately loaded schemas can be compared.
    *
    * @param other - A schema attribute to compare with this one.
    * @returns Whether the other attribute is equivalent to this schema attribute.
@@ -65,6 +66,8 @@ export default class SchemaAttribute extends SchemaEntry {
     if (!super.equivalent(other)) {
       return false
     }
-    return this.properties.symmetricDifference(other.properties).size === 0
+    const propertyNames = new Set([...this._properties].map((property) => property.name))
+    const otherPropertyNames = new Set([...other._properties].map((property) => property.name))
+    return propertyNames.symmetricDifference(otherPropertyNames).size === 0
   }
 }

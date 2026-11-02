@@ -8,6 +8,7 @@ import { SchemaSpec, SchemasSpec } from '../../src/schema/specs'
 import { buildSchemasSpec } from '../../src/bids/schema'
 import { BidsJsonFile } from '../../src/bids/index'
 import { getLocalSchemaVersions } from '../../src/schema/config'
+import { parseStandaloneString } from '../../src/parser/parser'
 
 describe('HED schemas', () => {
   describe('Schema loading', () => {
@@ -442,6 +443,21 @@ describe('HED schemas', () => {
         assert.strictEqual(schemas.baseSchema.library, '')
         assert.strictEqual(schemas.baseSchema.version, '8.4.0')
         assert.strictEqual(schemas.baseSchema.withStandard, '8.4.0')
+      })
+
+      it('should load the bundled unmerged lang_1.1.0 as its merged form would (#228, #229)', async () => {
+        const schemas = await buildSchemasFromVersion('8.4.0, lang_1.1.0')
+        const language = schemas.baseSchema.entries.tags.getEntry('language')
+        // inLibrary is added to the elements of the unmerged file (#228).
+        assert.strictEqual(language.getSingleAttributeValue('inLibrary'), 'lang')
+        // Language is placed by rooted=Item and inherits Item's extensionAllowed (#229).
+        assert.isTrue(language.hasBooleanAttribute('extensionAllowed'))
+        const [, errors, warnings] = parseStandaloneString('Language/Blech', schemas)
+        assert.isEmpty(errors)
+        assert.deepEqual(
+          warnings.map((issue) => issue.hedCode),
+          ['TAG_EXTENDED'],
+        )
       })
 
       it('should handle version strings with prefix', async () => {

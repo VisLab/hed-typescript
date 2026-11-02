@@ -149,6 +149,34 @@ export abstract class SchemaEntryWithAttributesParser<
 
     return [booleanAttributes, valueAttributes]
   }
+
+  /**
+   * Give the elements of an unmerged library schema the inLibrary attribute that its merged file carries.
+   *
+   * @remarks
+   * An unmerged file holds only its library's elements, except that it may name an element of an earlier schema of the
+   * group again to extend it (a partner unit class it adds units to); such an element keeps its declarer.
+   *
+   * @param schemaXml - The XML of the schema being parsed.
+   * @param valueAttributeDefinitions - The value attributes by name, modified in place.
+   * @param isDeclared - Whether an earlier schema of the group declared the named element.
+   */
+  protected _addInLibrary(
+    schemaXml: HedSchemaXMLObject,
+    valueAttributeDefinitions: Map<string, Map<SchemaAttribute, string[]>>,
+    isDeclared: (name: string) => boolean,
+  ): void {
+    const library = schemaXml.HED.$.library
+    const inLibrary = this.attributes.getEntry('inLibrary')
+    if (schemaXml.HED.$.unmerged !== true || library === undefined || inLibrary === undefined) {
+      return
+    }
+    for (const [name, valueAttributes] of valueAttributeDefinitions) {
+      if (!isDeclared(name) && !valueAttributes.has(inLibrary)) {
+        valueAttributes.set(inLibrary, [library])
+      }
+    }
+  }
 }
 
 export abstract class SchemaDefinitionEntryParser<
@@ -160,6 +188,7 @@ export abstract class SchemaDefinitionEntryParser<
       return
     }
     const [booleanAttributeDefinitions, valueAttributeDefinitions, descriptions] = this._parseDefinitions(definitions)
+    this._addInLibrary(schemaXml, valueAttributeDefinitions, (name) => this.entryTypeMap.has(name))
     for (const [name, valueAttributes] of valueAttributeDefinitions) {
       const booleanAttributes = booleanAttributeDefinitions.get(name) ?? new Set<SchemaAttribute>()
       const description = descriptions.get(name)
