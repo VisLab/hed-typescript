@@ -6,7 +6,7 @@ module.exports = {
     '^.+\\.(ts|tsx)$': 'babel-jest',
   },
   transformIgnorePatterns: ['/node_modules/(?!unicode-name|semver)'],
-  testPathIgnorePatterns: ['node_modules/', '<rootDir>/browser/', '<rootDir>/spec_tests/hed-tests/'],
+  testPathIgnorePatterns: ['node_modules/', '<rootDir>/spec_tests/hed-tests/'],
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
@@ -15,7 +15,6 @@ module.exports = {
     '/node_modules/',
     '/tests/',
     '/spec_tests/',
-    '/browser/',
     '/coverage/',
     '/docs/',
     '/scripts/',

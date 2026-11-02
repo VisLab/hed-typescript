@@ -1,5 +1,4 @@
-# A descriptive name for your workflow
-name: Deploy Vite App to GitHub Pages
+name: Deploy API docs to GitHub Pages
 
 on:
   push:
@@ -8,18 +7,15 @@ on:
 
 # Allow only one concurrent deployment, cancelling any previously running ones.
 concurrency:
-  group: pages
+  group: 'pages'
   cancel-in-progress: true
 
 permissions: {}
 
 jobs:
-  #--------------------------------------
-  # Build Job: Prepares the application
-  #--------------------------------------
   build:
     permissions:
-      contents: read # Or another more restrictive permission if possible.
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main branch
@@ -28,67 +24,34 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: lts/*
-          # Cache npm dependencies to speed up future builds
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            browser/package-lock.json
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
-      - name: Install root dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Remove browser package-lock.json and node_modules
-        working-directory: ./browser
-        run: rm -rf package-lock.json node_modules
-
-      - name: Install browser dependencies
-        # Specifies the working directory for the command
-        working-directory: ./browser
-        run: npm install --legacy-peer-deps
-
-      - name: Build hed-validator package
+      - name: Build package
         run: npm run build
-
-      - name: Link hed-validator package
-        run: npm link
-
-      - name: Link dependency for browser build
-        working-directory: ./browser
-        run: npm link hed-validator
 
       - name: Build documentation
-        run: npx typedoc --options typedoc.json --tsconfig tsconfig.json
-
-      - name: Build Vite site
-        working-directory: ./browser
-        run: npm run build
+        run: npm run docs
 
       - name: Upload artifact for deployment
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
-          # Specifies the directory to upload. This should match your build output folder.
-          path: ./browser/buildweb
+          path: ./docs/html
 
-  #------------------------------------------------
-  # Deploy Job: Deploys the built site
-  #------------------------------------------------
   deploy:
-    # This job depends on the 'build' job completing successfully
     needs: build
     permissions:
       pages: write
       id-token: write
     runs-on: ubuntu-latest
-
-    # Specify the deployment environment
     environment:
       name: github-pages
-      # The URL will be automatically set by the deployment step's output
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Deploy to GitHub Pages
-        # This is the official action for deploying the artifact to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
