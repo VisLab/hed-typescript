@@ -137,7 +137,10 @@ export default abstract class AbstractHedSchemaLoader {
     )
 
     const schemaEntries = new SchemaParser(schemaXmls).parse()
-    return new HedSchema(baseSchemaXml, schemaEntries, prefix)
+    // The group is named after the listed standard schema, else its first library, merged or unmerged: an unmerged
+    // library is parsed into its loaded partner but keeps its own name and version, as its merged file would.
+    const identitySchemaXml = standardSchema ?? librarySchemas[0]
+    return new HedSchema(identitySchemaXml, schemaEntries, prefix)
   }
 
   /**
