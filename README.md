@@ -71,8 +71,11 @@ be done as PRs (pull requests) to the `main` branch.
 
 ### Running the browser locally
 
-```code
-cd browser
+The browser app is in the [hed-web](https://github.com/hed-standard/hed-web) repository.
+
+```shell
+git clone https://github.com/hed-standard/hed-web
+cd hed-web
 npm install
 npm run build
 npm run preview
