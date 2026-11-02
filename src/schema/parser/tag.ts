@@ -37,6 +37,12 @@ export default class TagParser extends SchemaEntryWithAttributesParser<SchemaTag
   protected override _parseSchema(schemaXml: HedSchemaXMLObject): void {
     const tags = this.getAllTags(schemaXml)
     const shortTags = this.getShortTags(tags)
+    // Two tags of one name, or of names that differ only by case ("Item" under "Item"), would collapse into one entry
+    // or make a tag its own parent; report them first.
+    const tagKeys = [...shortTags.values()].map(lc)
+    if (new Set(tagKeys).size !== tagKeys.length) {
+      IssueError.generateAndThrow('duplicateTagsInSchema')
+    }
     const parentMap = this.generateParentMap(shortTags)
     const [booleanAttributeDefinitions, valueAttributeDefinitions, descriptions] = this._parseAttributeElements(
       tags.keys(),
@@ -235,18 +241,14 @@ export default class TagParser extends SchemaEntryWithAttributesParser<SchemaTag
    *
    * @param parentMap - The parent map (lowercase short names), with the rooted tags placed.
    * @param booleanAttributeDefinitions - The boolean attributes by short name, modified in place.
-   * @throws {IssueError} If two tag names differ only by case.
    */
   private processRecursiveAttributes(
     parentMap: Map<string, string>,
     booleanAttributeDefinitions: Map<string, Set<SchemaAttribute>>,
   ): void {
     const recursiveAttributes = new Set(this.attributes.filter(([, attribute]) => attribute.recursive).values())
+    // The names are unique apart from case (_parseSchema).
     const namesByKey = new Map([...booleanAttributeDefinitions.keys()].map((name) => [lc(name), name]))
-    // Names that differ only by case would make a tag its own parent ("Item" under "Item"); report them first.
-    if (namesByKey.size !== booleanAttributeDefinitions.size) {
-      IssueError.generateAndThrow('duplicateTagsInSchema')
-    }
     const passedDown = new Map<string, Set<SchemaAttribute>>()
     // The recursive attributes a tag passes to its children: its own and those it inherits.
     const passedDownBy = (key: string): Set<SchemaAttribute> => {

@@ -99,7 +99,7 @@ export default abstract class AbstractHedSchemaLoader {
     )
     const [mergedLibrarySchemas, unmergedLibrarySchemas] = partition(
       partneredLibrarySchemas,
-      (xml) => xml.HED.$.unmerged === undefined,
+      (xml) => xml.HED.$.unmerged !== true,
     )
 
     const isNonPartneredSchema = nonPartneredLibrarySchemas.length > 0

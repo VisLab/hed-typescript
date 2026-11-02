@@ -87,6 +87,13 @@ const inLibraryEntries = (schema) => {
       }
     }
   }
+  for (const [className, unitClass] of schema.entries.unitClasses) {
+    for (const [name, unit] of unitClass.units) {
+      if (unit.hasAttribute('inLibrary')) {
+        found.push(`units of ${className}:${name}=${unit.getSingleAttributeValue('inLibrary')}`)
+      }
+    }
+  }
   return found.sort()
 }
 
@@ -163,6 +170,16 @@ describe('Unmerged partnered library schemas', () => {
       try {
         await build([['testminimal', '2.1.0', path]])
         assert.fail('the duplicate MINI-TAG was accepted')
+      } catch (error) {
+        assert.strictEqual(error.issue?.internalCode, 'duplicateTagsInSchema', error.message)
+      }
+    })
+
+    it('rejects a tag whose name repeats its parent exactly (SCHEMA_DUPLICATE_NODE)', async () => {
+      const path = 'tests/schemaData/HED_testminimal_2.1.0_duplicate_exact.xml'
+      try {
+        await build([['testminimal', '2.1.0', path]])
+        assert.fail('the duplicate Mini-tag was accepted')
       } catch (error) {
         assert.strictEqual(error.issue?.internalCode, 'duplicateTagsInSchema', error.message)
       }
