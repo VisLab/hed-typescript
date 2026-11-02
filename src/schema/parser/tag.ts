@@ -307,9 +307,15 @@ export default class TagParser extends SchemaEntryWithAttributesParser<SchemaTag
       const unitClasses = tagUnitClassDefinitions.get(name) ?? []
       const valueClasses = tagValueClassDefinitions.get(name) ?? []
       const parentTagName = parentMap.get(lc(name))
-      const parentTag = parentTagName
-        ? (this.schemaTags.get(parentTagName) ?? this.entryTypeMap.get(parentTagName))
-        : undefined
+      // A tag hangs under the parent an earlier schema of the group declared, which mergeSchemaEntries keeps over this
+      // schema's equivalent copy. A "#" child keeps this schema's copy: under a kept parent it is either a duplicate,
+      // compared as part of its parent in addEntry, or a new value child, which is rejected below.
+      const parentTag =
+        parentTagName === undefined
+          ? undefined
+          : name.endsWith('-#')
+            ? (this.schemaTags.get(parentTagName) ?? this.entryTypeMap.get(parentTagName))
+            : (this.entryTypeMap.get(parentTagName) ?? this.schemaTags.get(parentTagName))
 
       if (name.endsWith('-#')) {
         if (this.entryTypeMap.has(parentTagName!) && !this.entryTypeMap.has(lc(name))) {

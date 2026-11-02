@@ -5,6 +5,7 @@ import { describe, it, jest } from '@jest/globals'
 import { buildSchemas } from '../../src/schema/init'
 import { SchemaSpec, SchemasSpec } from '../../src/schema/specs'
 import { parseHedString } from '../../src/parser/parser'
+import parseSchemaXML from '../../src/utils/xml'
 
 // hed-typescript does not bundle HED 8.5.0, the partner of 24 of these libraries; the mock loader serves it (and the
 // other hed-tests test schemas) from spec_tests/hed-tests, so no test here needs the network.
@@ -148,6 +149,35 @@ describe('Unmerged partnered library schemas', () => {
       const mixed = (await group(mergedPath('testminimal', '2.1.0'), unmergedPath('testconflict', '2.1.0'))).baseSchema
       assert.deepEqual(differences(allMerged, allUnmerged), [], 'both unmerged')
       assert.deepEqual(differences(allMerged, mixed), [], 'one merged, one unmerged')
+    })
+
+    it('hangs a new tag of the second library under the tag the first one declared', async () => {
+      // Both libraries declare Event (from their standard partner); only testconflict has Event/Rooted-tag.
+      for (const [minimalPath, conflictPath] of [
+        [mergedPath('testminimal', '2.1.0'), mergedPath('testconflict', '2.1.0')],
+        [mergedPath('testminimal', '2.1.0'), unmergedPath('testconflict', '2.1.0')],
+        [unmergedPath('testminimal', '2.1.0'), unmergedPath('testconflict', '2.1.0')],
+      ]) {
+        const schemas = await build([
+          ['testminimal', '2.1.0', minimalPath],
+          ['testconflict', '2.1.0', conflictPath],
+        ])
+        const tags = schemas.baseSchema.entries.tags
+        assert.strictEqual(tags.getEntry('rooted-tag').parent, tags.getEntry('event'), conflictPath)
+        const [, errors] = parseHedString('Event/Rooted-tag', schemas, false, false, true)
+        assert.isEmpty(errors, conflictPath)
+      }
+    })
+  })
+
+  describe('the unmerged header attribute', () => {
+    it('is read as a boolean in either case', () => {
+      for (const value of ['True', 'true']) {
+        const xml = parseSchemaXML(
+          `<HED version="1.0.0" library="x" withStandard="8.4.0" unmerged="${value}"><schema></schema></HED>`,
+        )
+        assert.strictEqual(xml.HED.$.unmerged, true, value)
+      }
     })
   })
 
