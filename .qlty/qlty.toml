@@ -45,7 +45,7 @@ name = "checkov"
 
 [[plugin]]
 name = "eslint"
-version = "10.8.0"
+version = "10.13.0"
 package_file = "package.json"
 package_filters = ["eslint", "jest", "prettier", "global", "@types/node", "typescript"]
 
@@ -58,7 +58,7 @@ name = "osv-scanner"
 
 [[plugin]]
 name = "prettier"
-version = "3.9.6"
+version = "3.9.10"
 package_file = "package.json"
 package_filters = ["prettier"]
 
