@@ -496,6 +496,26 @@ const issueData: Record<string, IssueType> = {
     message: issueMessageTemplate`The HED schema is invalid - "${'error'}".`,
   },
   // BIDS issues
+  duplicateTsvColumn: {
+    hedCode: 'TABULAR_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Column "${'column'}" appears more than once in the header of the tabular file.`,
+  },
+  paddedTsvColumn: {
+    hedCode: 'TABULAR_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Column name ${'column'} in the header of the tabular file begins or ends with whitespace.`,
+  },
+  blankTsvColumn: {
+    hedCode: 'TABULAR_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Column ${'position'} in the header of the tabular file has a blank name.`,
+  },
+  paddedTsvValue: {
+    hedCode: 'TABULAR_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Value ${'value'} in column "${'column'}", which has HED annotations, begins or ends with whitespace; values are used exactly as written.`,
+  },
   sidecarKeyMissing: {
     hedCode: 'SIDECAR_KEY_MISSING',
     level: 'warning',
@@ -515,6 +535,16 @@ const issueData: Record<string, IssueType> = {
     hedCode: 'SIDECAR_INVALID',
     level: 'error',
     message: issueMessageTemplate`The string 'HED' or 'n/a' was illegally used as a top-level sidecar key.`,
+  },
+  paddedSidecarKey: {
+    hedCode: 'SIDECAR_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Top-level sidecar key ${'sidecarKey'} begins or ends with whitespace.`,
+  },
+  paddedSidecarCategoricalKey: {
+    hedCode: 'SIDECAR_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Key ${'categoricalKey'} under HED in the categorical entry "${'sidecarKey'}" begins or ends with whitespace, so it can match no column value.`,
   },
   illegalSidecarData: {
     hedCode: 'SIDECAR_INVALID',

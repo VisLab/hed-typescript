@@ -12,6 +12,7 @@ import { DefinitionManager, Definition } from '../../parser/definitionManager'
 import { type HedSchemas } from '../../schema/containers'
 import type ParsedHedColumnSplice from '../../parser/parsedHedColumnSplice'
 import { isJsonObject, isStringRecord, type JsonObject } from '../../utils/types'
+import { isPaddedName } from '../../utils/string'
 
 const ILLEGAL_SIDECAR_KEYS = new Set(['hed', 'n/a'])
 
@@ -183,17 +184,22 @@ export class BidsSidecar extends BidsJsonFile {
     this.sidecarKeys = new Map(
       Object.entries(this.jsonData)
         .map(([key, value]): [string, BidsSidecarKey] | null => {
-          const trimmedKey = key.trim()
-          const lowerKey = trimmedKey.toLowerCase()
-          if (ILLEGAL_SIDECAR_KEYS.has(lowerKey)) {
+          // A key is a column name exactly as written (specification 3.2.10), so it is never trimmed.
+          if (isPaddedName(key)) {
+            IssueError.generateAndThrow('paddedSidecarKey', {
+              filePath: this.file?.path,
+              sidecarKey: JSON.stringify(key),
+            })
+          }
+          if (ILLEGAL_SIDECAR_KEYS.has(key.toLowerCase())) {
             IssueError.generateAndThrow('illegalSidecarHedKey', {
               filePath: this.file?.path,
-              sidecarKey: trimmedKey,
+              sidecarKey: key,
             })
           }
 
           if (BidsSidecar._sidecarValueHasHed(value)) {
-            return [trimmedKey, new BidsSidecarKey(trimmedKey, value.HED, this)]
+            return [key, new BidsSidecarKey(key, value.HED, this)]
           }
 
           this._verifyKeyHasNoDeepHed(key, value, key)
@@ -377,6 +383,17 @@ export class BidsSidecarKey {
       IssueError.generateAndThrow('illegalSidecarHedType', { sidecarKey: key, filePath: sidecar?.file?.path })
     } else {
       this.categoryMap = new Map<string, string>(Object.entries(data))
+      // A column value matches a key only when identical (specification 3.2.9.1), so a padded key could only match a
+      // padded value, which is itself an error: it can never annotate a row.
+      for (const categoricalKey of this.categoryMap.keys()) {
+        if (isPaddedName(categoricalKey)) {
+          IssueError.generateAndThrow('paddedSidecarCategoricalKey', {
+            sidecarKey: key,
+            categoricalKey: JSON.stringify(categoricalKey),
+            filePath: sidecar?.file?.path,
+          })
+        }
+      }
     }
   }
 
@@ -431,8 +448,8 @@ export class BidsSidecarKey {
     const warnings = []
 
     for (const [value, string] of this.categoryMap) {
-      const trimmedValue = value.trim()
-      if (ILLEGAL_SIDECAR_KEYS.has(trimmedValue.toLowerCase())) {
+      // Keys are never trimmed: a padded key was already refused when this key was constructed.
+      if (ILLEGAL_SIDECAR_KEYS.has(value.toLowerCase())) {
         IssueError.generateAndThrow('illegalSidecarHedCategoricalValue', {
           sidecarKey: this.name,
           filePath: this.sidecar?.file?.path,

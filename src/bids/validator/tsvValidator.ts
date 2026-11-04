@@ -4,6 +4,8 @@
  */
 
 import { BidsHedIssue } from '../types/issues'
+import { isMissingTsvValue } from '../tsvParser'
+import { isPaddedName, stripNameWhitespace } from '../../utils/string'
 import { BidsTsvElement, type BidsTsvFile, BidsTsvRow } from '../types/tsv'
 import { BidsValidator } from './validator'
 import { parseHedString, parseStandaloneString } from '../../parser/parser'
@@ -44,6 +46,21 @@ export class BidsHedTsvValidator extends BidsValidator {
    * Validate a BIDS TSV file.
    */
   public validate(): void {
+    // A padded, blank or repeated column name makes the rows unassemblable: report it and stop (specification 3.2.10).
+    const headerIssues = [
+      ...this.tsvFile.paddedColumns.map((column) =>
+        generateIssue('paddedTsvColumn', { column: JSON.stringify(column) }),
+      ),
+      ...this.tsvFile.blankColumns.map((position) => generateIssue('blankTsvColumn', { position })),
+      ...this.tsvFile.duplicateColumns.map((column) => generateIssue('duplicateTsvColumn', { column })),
+    ]
+    if (headerIssues.length > 0) {
+      for (const issue of headerIssues) {
+        this.errors.push(BidsHedIssue.fromHedIssue(issue, this.tsvFile.file))
+      }
+      return
+    }
+
     // Validate the BIDS sidecar if it exists and return if there are errors
     if (this.tsvFile.mergedSidecar) {
       const issues = this.tsvFile.mergedSidecar.validate(this.hedSchemas)
@@ -53,6 +70,12 @@ export class BidsHedTsvValidator extends BidsValidator {
       if (this.errors.length > 0) {
         return
       }
+    }
+
+    // A padded value in a column with HED annotations is reported before any value is checked or assembled.
+    this._validatePaddedValues()
+    if (this.errors.length > 0) {
+      return
     }
 
     // Valid the HED column by itself.
@@ -107,6 +130,41 @@ export class BidsHedTsvValidator extends BidsValidator {
           ),
         )
       }
+    }
+  }
+
+  /**
+   * Report the values with leading or trailing whitespace in the columns that the sidecar annotates with HED.
+   *
+   * Values are used exactly as written (specification 3.2.9.1), so a padded value would match no categorical key or
+   * be substituted with its whitespace; it is TABULAR_INVALID (specification 3.2.10.2). Each distinct padded value
+   * of a column is reported once, at its first line. The HED column and columns without HED annotations are not
+   * checked; `''` and `n/a` are missing values, while a blanks-only value and `n/a ` are padded.
+   */
+  private _validatePaddedValues(): void {
+    const sidecar = this.tsvFile.mergedSidecar
+    if (!sidecar?.hasHedData) {
+      return
+    }
+    for (const columnName of sidecar.hedData.keys()) {
+      const columnValues = this.tsvFile.parsedTsv.get(columnName)
+      if (columnValues === undefined) {
+        continue
+      }
+      const reported = new Set<string>()
+      columnValues.forEach((columnValue, rowIndexMinusTwo) => {
+        if (typeof columnValue !== 'string' || reported.has(columnValue) || !isPaddedName(columnValue)) {
+          return
+        }
+        reported.add(columnValue)
+        this.errors.push(
+          BidsHedIssue.fromHedIssue(
+            generateIssue('paddedTsvValue', { column: columnName, value: JSON.stringify(columnValue) }),
+            this.tsvFile.file,
+            { tsvLine: rowIndexMinusTwo + 2 },
+          ),
+        )
+      })
     }
   }
 
@@ -208,6 +266,9 @@ export class BidsHedTsvValidator extends BidsValidator {
   /**
    * Get map of onsets to BidsTsvElements.
    *
+   * Cells are kept as written, so an onset is grouped by its text without surrounding whitespace: `19` and ` 19 ` are
+   * the same onset. The stored cells are not changed.
+   *
    * @param elements - The elements representing the tsv file.
    * @returns Map of onset value to a list of elements with that onset.
    */
@@ -217,10 +278,11 @@ export class BidsHedTsvValidator extends BidsValidator {
       if (!element.hedString) {
         continue
       }
-      if (onsetMap.has(element.onset)) {
-        onsetMap.get(element.onset)?.push(element)
+      const onset = stripNameWhitespace(element.onset)
+      if (onsetMap.has(onset)) {
+        onsetMap.get(onset)?.push(element)
       } else {
-        onsetMap.set(element.onset, [element])
+        onsetMap.set(onset, [element])
       }
     }
     return onsetMap
@@ -386,18 +448,15 @@ export class BidsHedTsvParser {
 
     for (const [columnName, columnValue] of rowCells.entries()) {
       // If a splice, it can't be used in an assembled HED string.
-      if (
-        this.tsvFile.mergedSidecar.columnSpliceReferences.has(columnName) ||
-        BidsHedTsvParser.nullSet.has(columnValue)
-      ) {
+      if (this.tsvFile.mergedSidecar.columnSpliceReferences.has(columnName) || isMissingTsvValue(columnValue)) {
         continue
       }
-      if (columnMap.has(columnName) && !BidsHedTsvParser.nullSet.has(columnMap.get(columnName))) {
+      if (columnMap.has(columnName) && !isMissingTsvValue(columnMap.get(columnName))) {
         hedStringParts.push(columnMap.get(columnName) ?? '')
       }
     }
     const hedString = hedStringParts.join(',')
-    if (hedString === '' || hedString === 'n/a') {
+    if (isMissingTsvValue(hedString)) {
       return null
     }
     return new BidsTsvRow(hedString, this.tsvFile, tsvLine, rowCells)
@@ -413,7 +472,8 @@ export class BidsHedTsvParser {
     const columnMap = new Map<string, string | undefined>()
 
     if (rowCells.has('HED')) {
-      columnMap.set('HED', rowCells.get('HED'))
+      const hedCell = rowCells.get('HED')
+      columnMap.set('HED', isMissingTsvValue(hedCell) ? '' : hedCell)
     }
 
     if (!this.tsvFile.mergedSidecar.hasHedData) {
@@ -423,13 +483,18 @@ export class BidsHedTsvParser {
     // Check for the columns with HED data in the sidecar
     for (const [columnName, columnValues] of this.tsvFile.mergedSidecar.parsedHedData.entries()) {
       const rowColumnValue = rowCells.get(columnName)
-      if (rowColumnValue === undefined || rowColumnValue === 'n/a' || rowColumnValue === '') {
+      if (rowColumnValue === undefined) {
+        columnMap.set(columnName, '')
+        continue
+      }
+      if (isMissingTsvValue(rowColumnValue)) {
         columnMap.set(columnName, '')
         continue
       }
 
       if (columnValues instanceof ParsedHedString) {
-        const columnString = columnValues.hedString.replace('#', rowColumnValue)
+        // A function replacement substitutes the value literally; a "$" in it is not a replacement pattern.
+        const columnString = columnValues.hedString.replace('#', () => rowColumnValue)
         columnMap.set(columnName, columnString)
       } else if (columnValues instanceof Map) {
         columnMap.set(columnName, columnValues.get(rowColumnValue)?.hedString)
