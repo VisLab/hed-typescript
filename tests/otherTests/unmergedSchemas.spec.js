@@ -1,15 +1,11 @@
 import chai from 'chai'
 const assert = chai.assert
-import { describe, it, jest } from '@jest/globals'
+import { describe, it } from '@jest/globals'
 
 import { buildSchemas } from '../../src/schema/init'
 import { SchemaSpec, SchemasSpec } from '../../src/schema/specs'
 import { parseHedString } from '../../src/parser/parser'
 import parseSchemaXML from '../../src/utils/xml'
-
-// hed-typescript does not bundle HED 8.5.0, the partner of 24 of these libraries; the mock loader serves it (and the
-// other hed-tests test schemas) from spec_tests/hed-tests, so no test here needs the network.
-jest.mock('../../src/schema/loader')
 
 // A partnered library schema distributed in unmerged form (header unmerged="True") is merged with its standard
 // partner while it is parsed (src/schema/init.js). Loading the unmerged file must give the same schema as loading

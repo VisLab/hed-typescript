@@ -37,6 +37,16 @@ describe('HED schemas', () => {
         }
       })
 
+      it('the mouse library schema can be loaded from locally stored schema', async () => {
+        const spec1 = new SchemaSpec('', '1.0.0', 'mouse', '')
+        const specs = new SchemasSpec().addSchemaSpec(spec1)
+
+        const hedSchemas = await buildSchemas(specs)
+
+        assert.strictEqual(hedSchemas.baseSchema.version, spec1.version, 'Schema has wrong version number')
+        assert.strictEqual(hedSchemas.baseSchema.library, spec1.library, 'Schema has wrong library name')
+      })
+
       it('a standard schema with a prefix can be loaded from bundled schema', async () => {
         const spec1 = new SchemaSpec('nk', '8.0.0', '', '')
         const specs = new SchemasSpec().addSchemaSpec(spec1)
@@ -679,6 +689,13 @@ describe('HED schemas', () => {
       // Verify that the function returns an array
       assert.isArray(versions, 'Should return an array')
       assert.isAbove(versions.length, 0, 'Should return at least one version')
+
+      // Test specific known transformations
+      assert.include(versions, '8.0.0', 'Should include 8.0.0 (from HED8.0.0)')
+      assert.include(versions, '8.1.0', 'Should include 8.1.0 (from HED8.1.0)')
+      assert.include(versions, 'lang_1.0.0', 'Should include lang_1.0.0 (from HED_lang_1.0.0)')
+      assert.include(versions, 'score_2.0.0', 'Should include score_2.0.0 (from HED_score_2.0.0)')
+      assert.include(versions, 'mouse_1.0.0', 'Should include mouse_1.0.0 (from HED_mouse_1.0.0)')
 
       // Verify that no versions start with "HED"
       const hedPrefixedVersions = versions.filter((version) => version.startsWith('HED'))

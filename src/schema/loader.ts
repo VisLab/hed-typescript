@@ -4,7 +4,7 @@
  */
 
 import AbstractHedSchemaLoader from './abstractLoader'
-import { localSchemaMap } from './config'
+import { getBundledSchema, localSchemaNames } from './config'
 import type { SchemaSpec } from './specs'
 import type { HedSchemaXMLObject } from './xmlType'
 import { IssueError } from '../issues/issues'
@@ -29,7 +29,7 @@ export default class HedSchemaLoader extends AbstractHedSchemaLoader {
    * @returns Whether this validator bundles a particular schema.
    */
   protected override hasBundledSchema(schemaDef: SchemaSpec): boolean {
-    return localSchemaMap.has(schemaDef.localName)
+    return localSchemaNames.includes(schemaDef.localName)
   }
 
   /**
@@ -39,10 +39,9 @@ export default class HedSchemaLoader extends AbstractHedSchemaLoader {
    * @returns The raw schema XML data.
    */
   protected override async getBundledSchema(schemaDef: SchemaSpec): Promise<string> {
-    const schemaXml = localSchemaMap.get(schemaDef.localName)
-    if (!schemaXml) {
+    if (!localSchemaNames.includes(schemaDef.localName)) {
       IssueError.generateAndThrowInternalError('Bundled schema could not be found')
     }
-    return schemaXml
+    return getBundledSchema(schemaDef.localName)
   }
 }
