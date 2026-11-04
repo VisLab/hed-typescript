@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { beforeAll, describe, it } from '@jest/globals'
+import { beforeAll, describe, it, jest } from '@jest/globals'
 
 import { buildSchemasFromVersion } from '../../src/schema/init'
 import { BidsSidecar, BidsTsvFile } from '../../src/bids'
@@ -7,6 +7,9 @@ import { parseTSV } from '../../src/bids/tsvParser'
 import { Definition, DefinitionManager } from '../../src/parser/definitionManager'
 import { parseHedString } from '../../src/parser/parser'
 import { ReservedChecker } from '../../src/parser/reservedChecker'
+import reservedTagsData from '../../src/data/json/reservedTags.json'
+import { IssueError } from '../../src/issues/issues'
+import { checkFileVersion } from '../../src/utils/specFiles'
 
 // The rules of src/data/json/reservedTags.json (the specification's reserved_tags.json, section 3.2.8). The HED 8.0.0
 // time-unit conversion (hed-tests temporal-tag-error-no-conversion-factor-in-8-0-0) waits for the unit ports (#167).
@@ -212,5 +215,68 @@ describe('Reserved tags from the published reserved_tags.json', () => {
     it('is DEF_EXPAND_INVALID', () => {
       assert.deepEqual(validateString('(Def-expand/MyColor, (Label/Pie), Blue)'), ['DEF_EXPAND_INVALID'])
     })
+  })
+})
+
+// Specification Appendix A.6.1: refuse a file whose file version major number is not 1.
+describe('File version of reserved_tags.json', () => {
+  const check = (fields) => () =>
+    checkFileVersion({ ...reservedTagsData, ...fields }, 'fileVersion', 'reserved_tags.json')
+  const refusal = (fn) => {
+    const error = assert.throws(fn, IssueError)
+    assert.strictEqual(error.issue.internalCode, 'internalError')
+    return error.message
+  }
+
+  it('the packaged file carries an X.Y.Z specificationVersion and a fileVersion with major 1', () => {
+    assert.match(reservedTagsData.specificationVersion, /^\d+\.\d+\.\d+$/)
+    assert.match(reservedTagsData.fileVersion, /^1\.\d+\.\d+$/)
+    assert.doesNotThrow(check({}))
+  })
+
+  it.each(['1.0.0', '1.4.0', '1.0.7'])('accepts fileVersion %s', (version) => {
+    assert.doesNotThrow(check({ fileVersion: version }))
+  })
+
+  it.each([
+    ['major 2', '2.0.0'],
+    ['major 0', '0.9.0'],
+    ['two parts', '1.0'],
+    ['a prefix', 'v1.0.0'],
+    ['a number', 1],
+  ])('refuses %s', (title, version) => {
+    const message = refusal(check({ fileVersion: version }))
+    assert.include(message, `reserved_tags.json has fileVersion ${JSON.stringify(version)}`)
+  })
+
+  it('refuses a file without fileVersion, including one with the character-sets spelling', () => {
+    const { fileVersion, ...withoutVersion } = reservedTagsData
+    assert.include(
+      refusal(() => checkFileVersion(withoutVersion, 'fileVersion', 'reserved_tags.json')),
+      'reserved_tags.json has fileVersion missing',
+    )
+    assert.include(
+      refusal(() =>
+        checkFileVersion({ ...withoutVersion, file_version: fileVersion }, 'fileVersion', 'reserved_tags.json'),
+      ),
+      'reserved_tags.json has fileVersion missing',
+    )
+  })
+
+  it('refuses the packaged file when the module loads', async () => {
+    await jest.isolateModulesAsync(async () => {
+      jest.doMock('../../src/data/json/reservedTags.json', () => ({ ...reservedTagsData, fileVersion: '2.0.0' }))
+      const IsolatedIssueError = (await import('../../src/issues/issues')).IssueError
+      let caught = null
+      try {
+        await import('../../src/parser/reservedChecker')
+      } catch (error) {
+        caught = error
+      }
+      assert.instanceOf(caught, IsolatedIssueError)
+      assert.strictEqual(caught.issue.internalCode, 'internalError')
+      assert.include(caught.message, 'reserved_tags.json has fileVersion "2.0.0"')
+    })
+    jest.dontMock('../../src/data/json/reservedTags.json')
   })
 })

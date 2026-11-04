@@ -3,7 +3,8 @@
  *
  * The rules come from src/data/json/reservedTags.json, a verbatim copy of the reserved_tags.json that the HED
  * specification publishes (section 3.2.8, fields defined in Appendix A.6). Every row applies in every standard
- * schema version >= 8.0.0, so no check here takes a version.
+ * schema version >= 8.0.0, so no check here takes a version. The file is refused when this module loads if its
+ * fileVersion major number is not 1 (Appendix A.6.1).
  *
  * @module parser/reservedChecker
  */
@@ -15,6 +16,9 @@ import type ParsedHedTag from './parsedHedTag'
 import { getTagListString } from './parseUtils'
 import reservedTags from '../data/json/reservedTags.json'
 import { generateIssue, type Issue, IssueError } from '../issues/issues'
+import { checkFileVersion } from '../utils/specFiles'
+
+checkFileVersion(reservedTags, 'fileVersion', 'reserved_tags.json')
 
 /**
  * A row of the reserved-tag file: the group rules of one reserved tag.
