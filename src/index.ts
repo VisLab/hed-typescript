@@ -14,7 +14,7 @@ export {
   buildBidsSchemas,
 } from './bids'
 
-export { parseTSV } from './bids/tsvParser'
+export { findDuplicateHeaders, parseTSV } from './bids/tsvParser'
 
 export { IssueError, Issue } from './issues/issues'
 

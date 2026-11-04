@@ -7,16 +7,6 @@
  *
  */
 export const skippedTests = {
-  'sidecar-invalid-key-whitespace':
-    'A top-level sidecar key that begins or ends with whitespace gives no SIDECAR_INVALID.',
-  'sidecar-invalid-value-key-whitespace':
-    'A categorical key under HED that begins or ends with whitespace gives no SIDECAR_INVALID.',
-  'tabular-invalid-duplicate-column-name': 'A repeated column name in a TSV header gives no TABULAR_INVALID.',
-  'tabular-invalid-column-name-whitespace':
-    'A column name that begins or ends with whitespace gives no TABULAR_INVALID.',
-  'tabular-invalid-blank-column-name': 'A blank column name gives no TABULAR_INVALID.',
-  'tabular-invalid-value-whitespace':
-    'A value that begins or ends with whitespace in a column with HED annotations gives no TABULAR_INVALID.',
   'temporal-tag-error-delay-not-convertible':
     'A Delay whose unit has no conversionFactor (month) in a timeline file gives no TEMPORAL_TAG_ERROR.',
   'temporal-tag-error-duration-not-convertible':

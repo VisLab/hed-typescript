@@ -6,12 +6,21 @@
 import isPlainObject from 'lodash/isPlainObject'
 
 import { BidsFile, type FilePath } from './file'
-import { convertParsedTSVData, parseTSV, type OldParsedTSV, type ParsedTSV } from '../tsvParser'
+import {
+  convertParsedTSVData,
+  findHeaderProblems,
+  isMissingTsvValue,
+  parseTSV,
+  parseTSVHeader,
+  type OldParsedTSV,
+  type ParsedTSV,
+} from '../tsvParser'
 import { BidsSidecar } from './json'
 import BidsHedTsvValidator from '../validator/tsvValidator'
 import { IssueError } from '../../issues/issues'
 import { type DefinitionManager } from '../../parser/definitionManager'
 import type ParsedHedString from '../../parser/parsedHedString'
+import { columnNameText, stripNameWhitespace } from '../../utils/string'
 
 /**
  * A BIDS TSV file.
@@ -21,6 +30,21 @@ export class BidsTsvFile extends BidsFile {
    * This file's parsed TSV data.
    */
   public readonly parsedTsv: ParsedTSV
+
+  /**
+   * The column names that appear more than once in the header (TABULAR_INVALID); empty for Map data.
+   */
+  public readonly duplicateColumns: string[]
+
+  /**
+   * The column names that begin or end with whitespace (TABULAR_INVALID), each once in header order.
+   */
+  public readonly paddedColumns: string[]
+
+  /**
+   * The 1-based positions of the blank column names (TABULAR_INVALID).
+   */
+  public readonly blankColumns: number[]
 
   /**
    * HED strings in the "HED" column of the TSV data.
@@ -50,7 +74,12 @@ export class BidsTsvFile extends BidsFile {
   ) {
     super(name, file, BidsHedTsvValidator)
 
-    this.parsedTsv = this._parseTsv(tsvData, file)
+    const [parsedTsv, headers] = this._parseTsv(tsvData, file)
+    this.parsedTsv = parsedTsv
+    const { padded, blank, duplicate } = findHeaderProblems(headers)
+    this.paddedColumns = padded
+    this.blankColumns = blank
+    this.duplicateColumns = duplicate
     this.hedColumnHedStrings = this._parseHedColumn()
     this.mergedSidecar = new BidsSidecar(name, this.file, mergedDictionary, defManager)
   }
@@ -60,15 +89,26 @@ export class BidsTsvFile extends BidsFile {
    *
    * @param tsvData - This file's TSV data.
    * @param file - The Object representing this file data.
-   * @returns The parsed TSV data.
+   * @returns The parsed TSV data and the column names as written.
    */
-  private _parseTsv(tsvData: string | ParsedTSV | OldParsedTSV, file: FilePath): ParsedTSV {
+  private _parseTsv(tsvData: string | ParsedTSV | OldParsedTSV, file: FilePath): [ParsedTSV, string[]] {
     if (typeof tsvData === 'string') {
-      return parseTSV(tsvData)
+      return [parseTSV(tsvData), parseTSVHeader(tsvData)]
     } else if (tsvData instanceof Map) {
-      return new Map(tsvData)
+      // Names become text, as in a text file; two keys that become the same name keep the first column.
+      const parsedTsv: ParsedTSV = new Map<string, string[]>()
+      const headers: string[] = []
+      for (const [key, values] of tsvData) {
+        const name = columnNameText(key)
+        headers.push(name)
+        if (!parsedTsv.has(name)) {
+          parsedTsv.set(name, values)
+        }
+      }
+      return [parsedTsv, headers]
     } else if (isPlainObject(tsvData)) {
-      return convertParsedTSVData(tsvData)
+      const headers = tsvData.headers.map(columnNameText)
+      return [convertParsedTSVData({ headers, rows: tsvData.rows }), headers]
     } else {
       const msg = 'The tsvData was not a string, Map or plain object, so a BidsTsvFile could not be created.'
       IssueError.generateAndThrow('internalError', { message: msg, filePath: file.path })
@@ -85,7 +125,7 @@ export class BidsTsvFile extends BidsFile {
     if (hedColumn === undefined) {
       return []
     } else {
-      return hedColumn.map((hedCell) => (hedCell && hedCell !== 'n/a' ? hedCell : ''))
+      return hedColumn.map((hedCell) => (isMissingTsvValue(hedCell) ? '' : hedCell))
     }
   }
 
@@ -95,7 +135,12 @@ export class BidsTsvFile extends BidsFile {
    * @returns Whether this file has any HED data.
    */
   public override get hasHedData(): boolean {
-    return this.parsedTsv.has('HED') || this.mergedSidecar.hasHedData
+    // A padded "HED" header is still the HED column, so the file is checked and its header reported.
+    return (
+      this.parsedTsv.has('HED') ||
+      this.paddedColumns.some((column) => stripNameWhitespace(column) === 'HED') ||
+      this.mergedSidecar.hasHedData
+    )
   }
 
   /**
