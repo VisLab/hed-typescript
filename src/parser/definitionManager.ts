@@ -72,7 +72,8 @@ export class Definition {
     if (!this.defTag.splitValue || (placeholderAllowed && tag.splitValue === '#')) {
       return [this.defContents.normalized, [], []]
     }
-    const evalString = this.defContents.originalTag.replace('#', tag.splitValue ?? '#')
+    // A function replacement substitutes the value literally; a "$" in it is not a replacement pattern.
+    const evalString = this.defContents.originalTag.replace('#', () => tag.splitValue ?? '#')
     const [normalizedValue, errorIssues, warningIssues] = parseHedString(evalString, hedSchema, false, false, true)
     if (normalizedValue === null) {
       return [null, errorIssues, warningIssues]

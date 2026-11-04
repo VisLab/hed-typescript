@@ -3,7 +3,16 @@
  * @module bids/tsvParser
  */
 
+import { isPaddedName, stripNameWhitespace } from '../utils/string'
+
+/**
+ * Parsed TSV data: each column name with the column's cells.
+ */
 export type ParsedTSV = Map<string, string[]>
+
+/**
+ * Parsed TSV data in the old BIDS format.
+ */
 export type OldParsedTSV = {
   headers: string[]
   rows: string[][]
@@ -12,58 +21,192 @@ export type OldParsedTSV = {
 const stripBOM = (str: string) => str.replace(/^\uFEFF/, '')
 const normalizeEOL = (str: string) => str.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
 const isContentfulRow = (row: string) => row && !/^\s*$/.test(row)
+// A line with a tab has at least two columns, so it is a row even when every cell is blank or padded. An empty line
+// or a line of blanks without a tab is skipped, as pandas reads it in hed-python (skip_blank_lines).
+const isTableRow = (row: string) => row.includes('\t') || Boolean(isContentfulRow(row))
+
+/**
+ * Split TSV contents into cells: the first row, which is the header, then one array per row after it.
+ *
+ * The header cells are the column names and the other cells the values, all exactly as written (specification
+ * 3.2.9.1 and 3.2.10): nothing is trimmed, as for Map and {headers, rows} input. Header and data rows are found by
+ * the same rule, so a data line such as ` \t` is a row and its padded value is checked.
+ *
+ * @param contents - The contents of a TSV file.
+ * @returns The rows of the file.
+ */
+const splitRows = (contents: string): string[][] => {
+  const lines = stripBOM(normalizeEOL(contents)).split('\n')
+  const headerIndex = lines.findIndex(isTableRow)
+  if (headerIndex < 0) {
+    return []
+  }
+  const dataRows = lines
+    .slice(headerIndex + 1)
+    .filter(isTableRow)
+    .map((str) => str.split('\t'))
+  return [lines[headerIndex].split('\t'), ...dataRows]
+}
+
+/**
+ * Determine whether a TSV cell is a missing value: empty or `n/a` once any leading or trailing blank, tab, line feed
+ * or carriage return is removed.
+ *
+ * Used for the HED column and in assembly, where a cell such as `n/a ` is missing, as hedtools reads it. A padded
+ * value in a column with HED annotations never gets this far: it is reported as TABULAR_INVALID first.
+ *
+ * @param value - A cell value.
+ * @returns Whether the cell holds no value.
+ */
+export function isMissingTsvValue(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return true
+  }
+  // JavaScript callers can pass any cell value; it is read as its text, as hed-javascript does.
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  const text = stripNameWhitespace(String(value))
+  return text === '' || text === 'n/a'
+}
+
+/**
+ * Build the column map of a table, keeping only the first column of a repeated header name.
+ *
+ * A repeated name is an error (specification 3.2.10, TABULAR_INVALID) that {@link findDuplicateHeaders} detects;
+ * keeping one column per name keeps every column aligned with the rows instead of interleaving two columns.
+ *
+ * @param headers - The column names.
+ * @param rows - The rows; rows[0] is skipped as the header row.
+ * @returns The cells of each column.
+ */
+function createTsvMap(headers: string[], rows: string[][]): ParsedTSV {
+  const firstIndex = new Map<string, number>()
+  headers.forEach((header, index) => {
+    if (!firstIndex.has(header)) {
+      firstIndex.set(header, index)
+    }
+  })
+  const columns = new Map<string, string[]>()
+  for (const [header, index] of firstIndex) {
+    columns.set(
+      header,
+      rows.slice(1).map((row) => row[index]),
+    )
+  }
+  return columns
+}
+
+/**
+ * Return the names that appear more than once in a list of column names.
+ *
+ * Names are compared exactly as written. Padded and blank names are left out: they are reported as such
+ * (see {@link findHeaderProblems}), not as repeats.
+ *
+ * @param headers - The column names.
+ * @returns Each repeated name once, in order of its second appearance.
+ */
+function repeatedNames(headers: string[]): string[] {
+  const seen = new Set<string>()
+  const repeated = new Set<string>()
+  for (const header of headers) {
+    if (header === '' || isPaddedName(header)) {
+      continue
+    }
+    if (seen.has(header)) {
+      repeated.add(header)
+    }
+    seen.add(header)
+  }
+  return [...repeated]
+}
+
+/**
+ * Find the column names that break the rules for the first line of a tabular file (specification 3.2.10).
+ *
+ * @param headers - The column names, exactly as written.
+ * @returns Each name that begins or ends with whitespace once, in header order; the 1-based positions of the blank
+ *   names; and each other name that appears more than once (see {@link findDuplicateHeaders}).
+ */
+export function findHeaderProblems(headers: string[]): { padded: string[]; blank: number[]; duplicate: string[] } {
+  const padded = [...new Set(headers.filter(isPaddedName))]
+  const blank = headers.flatMap((header, index) => (header === '' ? [index + 1] : []))
+  return { padded, blank, duplicate: repeatedNames(headers) }
+}
 
 /**
  * Parse a TSV file.
+ *
+ * The column names are kept exactly as written. A column name repeated in the header keeps only its first column
+ * (see {@link findDuplicateHeaders}).
  *
  * @param contents - The contents of a TSV file.
  * @returns The parsed contents of the TSV file.
  */
 export function parseTSV(contents: string): ParsedTSV {
-  const rows = stripBOM(normalizeEOL(contents))
-    .split('\n')
-    .filter(isContentfulRow)
-    .map((str) => str.split('\t').map((cell) => cell.trim()))
+  const rows = splitRows(contents)
+  return createTsvMap(rows.length ? rows[0] : [], rows)
+}
 
-  if (rows.length === 0) {
-    return new Map<string, string[]>()
+/**
+ * Find the column names that appear more than once in the header of TSV contents.
+ *
+ * Names are compared exactly as written; padded and blank names are not counted (see {@link findHeaderProblems}).
+ *
+ * @param contents - The contents of a TSV file.
+ * @returns Each repeated name once; empty when every name is unique.
+ */
+export function findDuplicateHeaders(contents: string): string[] {
+  return repeatedNames(parseTSVHeader(contents))
+}
+
+/**
+ * Return the cells of the first header line of TSV contents (see {@link splitRows}), without splitting the other
+ * lines.
+ *
+ * Line breaks are \r\n, \r or \n, as in {@link splitRows}, so the result equals the header row that
+ * {@link parseTSV} uses. The cells are not trimmed.
+ *
+ * @param contents - The contents of a TSV file.
+ * @returns The header cells; empty when the contents have no header line.
+ */
+export function parseTSVHeader(contents: string): string[] {
+  const text = stripBOM(contents)
+  const lineBreak = /\r\n|\r|\n/g
+  let start = 0
+  while (start <= text.length) {
+    lineBreak.lastIndex = start
+    const match = lineBreak.exec(text)
+    const line = text.slice(start, match ? match.index : text.length)
+    if (isTableRow(line)) {
+      return line.split('\t')
+    }
+    if (!match) {
+      break
+    }
+    start = lineBreak.lastIndex
   }
+  return []
+}
 
-  const headers = rows[0]
-
-  return createTsvMap(headers, rows)
+/**
+ * Find the column names that appear more than once in parsed TSV data in the old BIDS format.
+ *
+ * @param oldParsedTsv - Parsed TSV data using the old format.
+ * @returns Each repeated name once; empty when every name is unique.
+ */
+export function findDuplicateParsedHeaders(oldParsedTsv: OldParsedTSV): string[] {
+  return repeatedNames(oldParsedTsv.headers)
 }
 
 /**
  * Convert parsed TSV file data from the old BIDS format to the new BIDS format.
  *
- * @param oldParsedTsv - Parsed TSV data using the old format
+ * A column name repeated in the headers keeps only its first column (see {@link findDuplicateParsedHeaders}).
+ *
+ * @param oldParsedTsv - Parsed TSV data using the old format.
  * @returns The parsed contents of the TSV file, using the new format.
  */
 export function convertParsedTSVData(oldParsedTsv: OldParsedTSV): ParsedTSV {
   return createTsvMap(oldParsedTsv.headers, oldParsedTsv.rows)
-}
-
-/**
- * Create a parsed TSV map.
- *
- * @param headers - The list of headers.
- * @param rows - The grid of rows and cells.
- * @returns The parsed contents of the TSV file.
- */
-function createTsvMap(headers: string[], rows: string[][]): ParsedTSV {
-  const columns = new Map<string, string[]>()
-
-  for (const header of headers) {
-    columns.set(header, [])
-  }
-  for (let i = 1; i < rows.length; i++) {
-    for (let j = 0; j < headers.length; j++) {
-      columns.get(headers[j])?.push(rows[i][j])
-    }
-  }
-
-  return columns
 }
 
 export default parseTSV

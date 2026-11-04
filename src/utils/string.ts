@@ -46,6 +46,69 @@ export function parseJson(jsonText: string): JsonObject {
   return jsonData
 }
 
+/**
+ * The whitespace that a column name or a top-level sidecar key must not begin or end with: blank, tab, LF and CR
+ * (specification 3.2.10). Other Unicode spaces, which String.prototype.trim also removes, are not in the set.
+ */
+export const NAME_WHITESPACE = ' \t\n\r'
+
+/**
+ * Determine whether a name begins or ends with {@link NAME_WHITESPACE}.
+ *
+ * @param name - A column name or a top-level sidecar key.
+ * @returns Whether the first or last character of the name is in {@link NAME_WHITESPACE}.
+ */
+export function isPaddedName(name: unknown): boolean {
+  return (
+    typeof name === 'string' &&
+    name.length > 0 &&
+    (NAME_WHITESPACE.includes(name[0]) || NAME_WHITESPACE.includes(name[name.length - 1]))
+  )
+}
+
+/**
+ * Return a column name as text, as a text header would hold it.
+ *
+ * A string is returned unchanged. `null`, `undefined` and `NaN` become `''` (a blank name). A whole number is
+ * written without a decimal point and in full digits (`1` and `1.0` both become `'1'`), as hedtools writes
+ * it; anything else goes through `String` (`1.5` becomes `'1.5'`).
+ *
+ * @param name - A column name from a Map key or an old-format header.
+ * @returns The name as text.
+ */
+export function columnNameText(name: unknown): string {
+  if (typeof name === 'string') {
+    return name
+  }
+  if (name === null || name === undefined || Number.isNaN(name)) {
+    return ''
+  }
+  if (typeof name === 'number' && Number.isInteger(name)) {
+    return BigInt(name).toString()
+  }
+  // JavaScript callers can pass any key or header; anything else is written as String writes it.
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  return String(name)
+}
+
+/**
+ * Remove {@link NAME_WHITESPACE} from both ends of a name, leaving any other Unicode space in place.
+ *
+ * @param name - A column name or a top-level sidecar key.
+ * @returns The name without leading or trailing blanks, tabs, LFs or CRs.
+ */
+export function stripNameWhitespace(name: string): string {
+  let start = 0
+  let end = name.length
+  while (start < end && NAME_WHITESPACE.includes(name[start])) {
+    start++
+  }
+  while (end > start && NAME_WHITESPACE.includes(name[end - 1])) {
+    end--
+  }
+  return name.slice(start, end)
+}
+
 export type IssueMessageTemplateString = (
   parameterValues: Record<string, string>,
   start?: number,
