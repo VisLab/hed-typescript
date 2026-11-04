@@ -1,7 +1,7 @@
 import path from 'node:path'
 import esbuild from 'esbuild'
 
-// Node.js target build
+// Node.js target build. The bundled schemas are inlined (esbuild cannot split CommonJS output).
 await esbuild.build({
   entryPoints: [path.join(process.cwd(), 'src', 'index.js')],
   loader: { '.xml': 'text' },
@@ -19,6 +19,8 @@ await esbuild.build({
 // The "browser" field in package.json redirects the two Node-only modules (src/schema/loader.ts and
 // src/bids/accessors/directory.ts) to their browser versions; esbuild honours that field when platform is 'browser'.
 // No Node.js module is bundled, so none is polyfilled.
+// Each bundled schema is split into its own chunk (dist/esm/schemas/), loaded on first use. chunkNames applies to
+// every split-out file, so esbuild's shared runtime helpers also land there as schemas/chunk.js.
 await esbuild.build({
   entryPoints: [path.join(process.cwd(), 'src', 'index.js')],
   loader: { '.xml': 'text' },
@@ -26,6 +28,8 @@ await esbuild.build({
   bundle: true,
   sourcemap: true,
   format: 'esm',
+  splitting: true,
+  chunkNames: 'schemas/[name]',
   external: ['pluralize'],
   platform: 'browser',
 })
