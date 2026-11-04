@@ -429,7 +429,8 @@ export class BidsHedTsvParser {
       }
 
       if (columnValues instanceof ParsedHedString) {
-        const columnString = columnValues.hedString.replace('#', rowColumnValue)
+        // A function replacement substitutes the value literally; a "$" in it is not a replacement pattern.
+        const columnString = columnValues.hedString.replace('#', () => rowColumnValue)
         columnMap.set(columnName, columnString)
       } else if (columnValues instanceof Map) {
         columnMap.set(columnName, columnValues.get(rowColumnValue)?.hedString)
