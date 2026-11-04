@@ -151,7 +151,7 @@ export default abstract class AbstractHedSchemaLoader {
    * @throws {IssueError} If the schema could not be loaded.
    * @internal
    */
-  public async loadSchema(schemaDef: SchemaSpec): Promise<HedSchemaXMLObject> {
+  public async loadSchema(schemaDef: SchemaSpec | null): Promise<HedSchemaXMLObject> {
     const xmlData = await this.loadPromise(schemaDef)
     if (xmlData === null) {
       IssueError.generateAndThrow('invalidSchemaSpecification', { spec: JSON.stringify(schemaDef) })
@@ -163,11 +163,13 @@ export default abstract class AbstractHedSchemaLoader {
    * Choose the schema Promise from a schema version or path description.
    *
    * @param schemaDef - The description of which schema to use.
-   * @returns The schema XML data.
+   * @returns The schema XML data, or null if there is no description.
    * @throws {IssueError} If the schema could not be loaded.
    */
-  private async loadPromise(schemaDef: SchemaSpec): Promise<HedSchemaXMLObject> {
-    if (schemaDef.localPath) {
+  private async loadPromise(schemaDef: SchemaSpec | null): Promise<HedSchemaXMLObject | null> {
+    if (schemaDef === null) {
+      return null
+    } else if (schemaDef.localPath) {
       return this.loadLocalSchema(schemaDef.localPath)
     } else if (this.hasBundledSchema(schemaDef)) {
       return this.loadBundledSchema(schemaDef)
