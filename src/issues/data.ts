@@ -262,6 +262,11 @@ const issueData: Record<string, IssueType> = {
     level: 'error',
     message: issueMessageTemplate`HED event string "${'string'}" has temporal tags on line(s) [${'tsvline'}] in a tsv file without an onset time.`,
   },
+  temporalTagNoConversion: {
+    hedCode: 'TEMPORAL_TAG_ERROR',
+    level: 'error',
+    message: issueMessageTemplate`Tag "${'tag'}" in HED event string "${'string'}" cannot be converted to the default units of its unit class (its unit has no conversionFactor), so it cannot be placed on the timeline.`,
+  },
   duplicateTemporal: {
     hedCode: 'TEMPORAL_TAG_ERROR',
     level: 'error',
