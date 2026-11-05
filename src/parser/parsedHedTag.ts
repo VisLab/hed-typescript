@@ -8,6 +8,7 @@ import { ReservedChecker } from './reservedChecker'
 import TagConverter from './tagConverter'
 import { type TagSpec } from './tokenizer'
 import { IssueError } from '../issues/issues'
+import { characterSets, codePoint } from '../schema/characterSets'
 import { type HedSchema, type HedSchemas } from '../schema/containers'
 
 import type SchemaTag from '../schema/entries/tag'
@@ -15,7 +16,16 @@ import SchemaValueTag from '../schema/entries/valueTag'
 import type SchemaUnit from '../schema/entries/unit'
 import type SchemaUnitClass from '../schema/entries/unitClass'
 
-const allowedRegEx = /^[^{},]*$/
+// The characters of a value whose placeholder declares no valueClass (character_sets.json; hed-python does the same).
+const UNCLASSED_VALUE_SETS = ['value-text']
+
+/**
+ * Why a value is not valid for a tag: a VALUE_INVALID message, or the characters (index within the value) that the
+ * first class rejecting only characters does not allow, with that class (subject) and its character set names.
+ */
+type ValueProblem =
+  | { msg: string; characters?: undefined }
+  | { msg?: undefined; characters: Array<[number, string]>; subject: string; names: string[] }
 
 /**
  * A parsed HED tag.
@@ -152,9 +162,21 @@ export default class ParsedHedTag extends ParsedHedSubstring {
     if (actualUnit === null && actualUnitString !== null) {
       IssueError.generateAndThrow('unitClassInvalidUnit', { tag: this.originalTag })
     }
-    const valueErrorMsg = this.checkValue(actualValueString)
-    if (valueErrorMsg !== '') {
-      IssueError.generateAndThrow('invalidValue', { tag: this.originalTag, msg: valueErrorMsg })
+    const problem = this._findValueProblem(actualValueString)
+    if (problem?.characters) {
+      // The index is within the tag as written: the value starts where it does in the remainder.
+      const valueStart = this.originalTag.length - remainder.length + remainder.indexOf(actualValueString)
+      const [index, character] = problem.characters[0]
+      IssueError.generateAndThrow('invalidValueCharacter', {
+        character: character,
+        codePoint: codePoint(character),
+        index: valueStart + index,
+        tag: this.originalTag,
+        allows: `${problem.subject} allows ${characterSets.describe(problem.names)}`,
+        charSet: problem.names.join(', '),
+      })
+    } else if (problem) {
+      IssueError.generateAndThrow('invalidValue', { tag: this.originalTag, msg: problem.msg })
     }
   }
 
@@ -437,27 +459,64 @@ export default class ParsedHedTag extends ParsedHedSubstring {
    * @returns An empty string if value is value, otherwise an indication of failure.
    */
   public checkValue(value: string): string {
-    if (!this.takesValue) {
-      return `Tag "${this.schemaTag.name}" does not take a value but has value "${value}"`
+    const problem = this._findValueProblem(value)
+    if (problem === null) {
+      return ''
+    }
+    if (problem.characters) {
+      const [index, character] = problem.characters[0]
+      return `Character "${character}" (${codePoint(character)}) at index ${index} of value "${value}" is not allowed: ${problem.subject} allows ${characterSets.describe(problem.names)}.`
+    }
+    return problem.msg
+  }
+
+  /**
+   * Find why a value is not valid for this tag, as hed-python's _check_value_class does.
+   *
+   * @remarks
+   *
+   * A value passes when any of the tag's value classes accepts it. Each class checks its whole-value rule
+   * (numericClass, dateTimeClass) before its characters: a broken rule is VALUE_INVALID, a character the class
+   * does not allow is CHARACTER_INVALID. A value whose placeholder declares no value class may use value-text.
+   *
+   * @param value - The value to be checked.
+   * @returns null if the value is valid; `{msg}` for a VALUE_INVALID failure; otherwise the characters (index within
+   *     the value) of the first class that rejected only characters, with the class (subject) and its character set
+   *     names.
+   */
+  private _findValueProblem(value: string): ValueProblem | null {
+    const takesValueTag = this.takesValueTag
+    if (takesValueTag === undefined) {
+      return { msg: `Tag "${this.schemaTag.name}" does not take a value but has value "${value}"` }
     }
     if (value === '#') {
       // Placeholders work
-      return ''
+      return null
     }
-    const valueAttributeNames = this._schemaTag.valueAttributeNames
-    const valueClassNames = valueAttributeNames?.get('valueClass')
-    if (!valueClassNames) {
-      // No specified value classes
-      const allowed = allowedRegEx.test(value)
-      if (allowed) {
-        return ''
+    const valueClasses = takesValueTag.valueClasses
+    if (valueClasses.length === 0) {
+      const characters = characterSets.problemCharacters(value, UNCLASSED_VALUE_SETS)
+      if (characters.length === 0) {
+        return null
       }
-      return `Tag "${this.schemaTag.name}" has a value containing either curly braces or a comma, which is not allowed for tags without specific value class properties.`
+      return { characters: characters, subject: 'a value with no value class', names: UNCLASSED_VALUE_SETS }
     }
-    const entryManager = this.schema.entries.valueClasses
-    if (valueClassNames.some((valueClassName) => entryManager.getEntry(valueClassName)?.validateValue(value))) {
-      return ''
+    let characterProblem: ValueProblem | null = null
+    for (const valueClass of valueClasses) {
+      const problem = valueClass.valueProblem(value)
+      if (problem === null) {
+        return null
+      }
+      if (problem.characters && characterProblem === null) {
+        characterProblem = { characters: problem.characters, subject: valueClass.name, names: valueClass.allowedNames }
+      }
     }
-    return `Tag "${this.schemaTag.name}" has value classes [${valueClassNames.join(', ')}] but its value "${value}" is not in any of them.`
+    if (characterProblem !== null) {
+      return characterProblem
+    }
+    const valueClassNames = valueClasses.map((valueClass) => valueClass.name)
+    return {
+      msg: `Tag "${this.schemaTag.name}" has value classes [${valueClassNames.join(', ')}] but its value "${value}" is not in any of them.`,
+    }
   }
 }

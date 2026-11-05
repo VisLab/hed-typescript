@@ -212,17 +212,21 @@ export default class TagParser extends SchemaEntryWithAttributesParser<SchemaTag
       return tagValueClassDefinitions
     }
 
+    // A value class the schema does not define is a compliance fault, and older published schemas have such faults
+    // (HED 8.0.0 gives Parameter-label/# and Timbre/# the undefined labelClass). The schema is never refused for
+    // one: the reference is treated as textClass, or dropped if the schema has no textClass.
+    const textClass = this.valueClasses.getEntry('textClass')
     for (const tagName of shortTags.values()) {
       const valueAttributes = valueAttributeDefinitions.get(tagName)
       if (valueAttributes?.has(tagValueClassAttribute)) {
-        const tagValueClasses =
-          valueAttributes
-            ?.get(tagValueClassAttribute)
-            ?.map((valueClassName) => {
-              return this.valueClasses.getEntry(valueClassName)
-            })
-            .filter((valueClass) => valueClass !== undefined) ?? []
-        tagValueClassDefinitions.set(tagName, tagValueClasses)
+        const tagValueClasses = new Set<SchemaValueClass>()
+        for (const valueClassName of valueAttributes.get(tagValueClassAttribute) ?? []) {
+          const valueClass = this.valueClasses.getEntry(valueClassName) ?? textClass
+          if (valueClass !== undefined) {
+            tagValueClasses.add(valueClass)
+          }
+        }
+        tagValueClassDefinitions.set(tagName, [...tagValueClasses])
         // TODO: Uncomment once value validation uses value classes.
         // valueAttributes.delete(tagValueClassAttribute)
       }

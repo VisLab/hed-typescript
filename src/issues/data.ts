@@ -116,6 +116,11 @@ const issueData: Record<string, IssueType> = {
     level: 'error',
     message: issueMessageTemplate`Invalid placeholder value for tag "${'tag'}". ${'msg'}`,
   },
+  invalidValueCharacter: {
+    hedCode: 'CHARACTER_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Invalid character "${'character'}" (${'codePoint'}) at index ${'index'} of "${'tag'}": ${'allows'}.`,
+  },
   invalidPlaceholderContext: {
     hedCode: 'PLACEHOLDER_INVALID',
     level: 'error',

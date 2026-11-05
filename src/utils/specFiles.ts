@@ -1,8 +1,8 @@
 /** Checks of the machine-readable files the HED specification publishes (Appendix A.6.1).
  *
- * src/data/json/reservedTags.json is a verbatim copy of the specification's reserved_tags.json. It carries a file
- * version X.Y.Z; a validator must not apply a file whose major number it does not support, and accepts any minor
- * and patch number under a supported major.
+ * src/data/json/reservedTags.json and src/data/json/characterSets.json are verbatim copies of the specification's
+ * reserved_tags.json and character_sets.json. Each carries a file version X.Y.Z; a validator must not apply a file
+ * whose major number it does not support, and accepts any minor and patch number under a supported major.
  *
  * @module utils/specFiles
  */
