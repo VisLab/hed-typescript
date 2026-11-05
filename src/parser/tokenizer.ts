@@ -6,6 +6,7 @@
 import { unicodeName } from 'unicode-name'
 
 import { generateIssue, type Issue, IssueError } from '../issues/issues'
+import { characterSets } from '../schema/characterSets'
 import { type Bounds, type RecursiveArray } from '../utils/types'
 
 const CHARACTERS = {
@@ -29,15 +30,6 @@ function getTrimmedBounds(originalString: string): Bounds | null {
   }
   const end = originalString.search(/\S\s*$/)
   return [start, end + 1]
-}
-
-const invalidCharacters = new Set(['[', ']', '~', '"'])
-// Add control codes to invalidCharacters
-for (let i = 0x00; i <= 0x1f; i++) {
-  invalidCharacters.add(String.fromCodePoint(i))
-}
-for (let i = 0x7f; i <= 0x9f; i++) {
-  invalidCharacters.add(String.fromCodePoint(i))
 }
 
 /**
@@ -306,7 +298,8 @@ export class HedStringTokenizer {
 
     if (characterHandler) {
       characterHandler()
-    } else if (invalidCharacters.has(character)) {
+    } else if (characterSets.isForbidden(character)) {
+      // No HED string may contain it (character_sets.json hed_string.forbidden).
       this.pushInvalidCharacterIssue(character, i)
     } else {
       this.state.currentToken += character

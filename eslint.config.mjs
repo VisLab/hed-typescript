@@ -11,6 +11,7 @@ export default defineConfig([
   globalIgnores(['tests/otherTestData/**/*'], 'Ignore Other Test Data Directory'),
   globalIgnores(['src/data/*'], 'Ignore Source Data Directory'),
   globalIgnores(['spec_tests/hed-tests/**/*'], 'Ignore hed-tests Submodule'),
+  globalIgnores(['.status/**/*'], 'Ignore Working Notes Directory'),
 
   {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs', '**/*.ts'],
