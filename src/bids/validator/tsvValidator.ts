@@ -225,6 +225,11 @@ export class BidsHedTsvValidator extends BidsValidator {
    * @param elements - The elements representing the tsv file.
    */
   private _validateTemporal(elements: BidsTsvElement[]): void {
+    // Delay and Duration values must be convertible to seconds to be placed on the timeline.
+    this._checkTimeConversions(elements)
+    if (this.errors.length > 0) {
+      return
+    }
     // Check basic temporal conflicts such as Offset before Onset, or temporal tags with same def at same time.
     const eventManager = new EventManager()
     const [eventList, temporalIssues] = eventManager.parseEvents(elements)
@@ -236,6 +241,36 @@ export class BidsHedTsvValidator extends BidsValidator {
     this._checkDuplicatesAcrossRows(elements)
     if (this.errors.length === 0) {
       this.errors.push(...eventManager.validate(eventList))
+    }
+  }
+
+  /**
+   * Report Delay and Duration tags whose value cannot be converted to the default unit of their unit class.
+   *
+   * @remarks
+   * In a timeline file a Delay is added to the row's onset and a Duration gives the end time of its group, so
+   * both must convert to seconds. A valid unit that has no conversionFactor (month and year in HED 8.4.0)
+   * cannot be placed on the timeline (specification Appendix B, TEMPORAL_TAG_ERROR). A non-numeric value or an
+   * invalid unit is a VALUE_INVALID or UNITS_INVALID error when the string is parsed, before this check runs.
+   * Non-timeline files never reach this check: Duration may use any valid unit there.
+   *
+   * @param elements - The elements representing the tsv file.
+   */
+  private _checkTimeConversions(elements: BidsTsvElement[]): void {
+    const timeTags = new Set(['Delay', 'Duration'])
+    for (const element of elements) {
+      const tags = element.parsedHedString?.tags ?? []
+      for (const tag of tags) {
+        if (timeTags.has(tag.schemaTag.name) && tag.valueAsDefaultUnit() === null) {
+          this.errors.push(
+            BidsHedIssue.fromHedIssue(
+              generateIssue('temporalTagNoConversion', { tag: tag.toString(), string: element.hedString }),
+              element.file,
+              { tsvLine: element.tsvLine },
+            ),
+          )
+        }
+      }
     }
   }
 

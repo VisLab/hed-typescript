@@ -40,14 +40,26 @@ export default class SchemaUnitClass extends SchemaEntryWithAttributes {
 
   /**
    * Get the default unit for this unit class.
+   *
+   * @remarks
+   *
+   * A listed unit wins; otherwise the unit that the default derives from (A for mA, Ohm for kOhm) is matched.
    */
   public get defaultUnit(): SchemaUnit | undefined {
     const attributeValue = this.getSingleAttributeValue('defaultUnits')
-    if (attributeValue) {
-      return this._units.get(attributeValue)
-    } else {
+    if (attributeValue === undefined) {
       return undefined
     }
+    return (
+      this._units.get(attributeValue) ?? [...this._units.values()].find((unit) => unit.validateUnit(attributeValue))
+    )
+  }
+
+  /**
+   * Whether any unit of this unit class has a conversionFactor (none of the timeUnits of HED 8.0.0 does).
+   */
+  public get hasConversionFactors(): boolean {
+    return [...this._units.values()].some((unit) => unit.hasAttribute('conversionFactor'))
   }
 
   /**
@@ -70,10 +82,11 @@ export default class SchemaUnitClass extends SchemaEntryWithAttributes {
   /**
    * Extract the unit class and remainder.
    *
-   * @param value - A value-containing string.
-   * @returns A tuple with the unit class, unit string, and value string
+   * @param value - The value part of a tag, possibly ending in a unit.
+   * @param listedOnly - Whether to match only unit names as listed in the schema (no plurals or modifiers).
+   * @returns A tuple with the unit, unit string, and value string.
    */
-  public extractUnit(value: string): [SchemaUnit | null, string | null, string] {
+  public extractUnit(value: string, listedOnly: boolean = false): [SchemaUnit | null, string | null, string] {
     let actualUnit = null // The Unit class of the value
     let actualValueString // The actual value part of the value
     let actualUnitString
@@ -90,7 +103,7 @@ export default class SchemaUnitClass extends SchemaEntryWithAttributes {
     actualValueString = firstPart
     actualUnitString = lastPart
     for (const unit of this._units.values()) {
-      if (!unit.isPrefixUnit && unit.validateUnit(lastPart)) {
+      if (!unit.isPrefixUnit && (listedOnly ? lastPart === unit.name : unit.validateUnit(lastPart))) {
         // Checking if it is non-prefixed unit
         actualValueString = firstPart
         actualUnitString = lastPart
