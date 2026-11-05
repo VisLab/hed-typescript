@@ -105,13 +105,20 @@ export class Event {
     return [event, []]
   }
 
+  /**
+   * Extract the delay of a temporal group.
+   *
+   * @param group - The group.
+   * @returns The delay in seconds, or 0 if the group has no convertible Delay.
+   */
   private static extractDelay(group: ParsedHedGroup): number {
     const tags = group.reservedTags.get('Delay')
     if (tags === undefined) {
       return 0
     }
-    const delay = Number(tags[0].value)
-    return Number.isFinite(delay) ? delay : 0
+    // The delay is converted to the default unit of its unit class (seconds). A delay that cannot be
+    // converted is reported by the TSV validator before events are created; here it counts as 0.
+    return tags[0].valueAsDefaultUnit() ?? 0
   }
 }
 

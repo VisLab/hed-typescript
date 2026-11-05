@@ -62,6 +62,11 @@ export default class ParsedHedTag extends ParsedHedSubstring {
   private _units: string | null
 
   /**
+   * The schema unit matching the units, if any.
+   */
+  private _unit: SchemaUnit | null
+
+  /**
    * The normalized string representation of this tag.
    */
   private readonly _normalized: string
@@ -140,6 +145,7 @@ export default class ParsedHedTag extends ParsedHedSubstring {
 
     // Resolve the units and check
     const [actualUnit, actualUnitString, actualValueString] = this._separateUnits(schemaTag, value)
+    this._unit = actualUnit
     this._units = actualUnitString
     this._value = actualValueString
 
@@ -161,17 +167,102 @@ export default class ParsedHedTag extends ParsedHedSubstring {
    * @throws {IssueError} If parsing the remainder section fails.
    */
   private _separateUnits(schemaTag: SchemaTag, remainder: string): [SchemaUnit | null, string | null, string] {
-    const unitClasses = schemaTag.unitClasses
-    let actualUnit = null
-    let actualUnitString = null
+    const unitClasses = this._expandUnitClasses(schemaTag.unitClasses)
+    let actualUnit: SchemaUnit | null = null
+    let actualUnitString: string | null = null
     let actualValueString = remainder // If no unit class, the remainder is the value
-    for (const unitClass of unitClasses) {
-      ;[actualUnit, actualUnitString, actualValueString] = unitClass.extractUnit(remainder)
-      if (actualUnit !== null) {
-        break // found the unit
+    // A unit listed outright in some class wins over one another class only derives: with several classes
+    // (unitClass=anyUnits) "dB" is the listed decibel, not "d" + "B" (byte).
+    for (const listedOnly of [true, false]) {
+      for (const unitClass of unitClasses) {
+        ;[actualUnit, actualUnitString, actualValueString] = unitClass.extractUnit(remainder, listedOnly)
+        if (actualUnit !== null) {
+          return [actualUnit, actualUnitString, actualValueString]
+        }
       }
     }
     return [actualUnit, actualUnitString, actualValueString]
+  }
+
+  /**
+   * Expand the anyUnits pseudo class (HED 8.5.0) to every unit class of this tag's schema.
+   *
+   * @param unitClasses - The unit classes of the schema tag.
+   * @returns The unit classes to search, in schema order.
+   */
+  private _expandUnitClasses(unitClasses: SchemaUnitClass[]): SchemaUnitClass[] {
+    if (!unitClasses.some((unitClass) => unitClass.name === 'anyUnits')) {
+      return unitClasses
+    }
+    const expanded = unitClasses.filter((unitClass) => unitClass.name !== 'anyUnits')
+    for (const unitClass of this.schema.entries.unitClasses.values()) {
+      if (unitClass.name !== 'anyUnits' && !expanded.includes(unitClass)) {
+        expanded.push(unitClass)
+      }
+    }
+    return expanded
+  }
+
+  /**
+   * Convert this tag's value to the default unit of its unit class.
+   *
+   * @remarks
+   *
+   * A value written without a unit is taken to be in the default unit already; a numeric value of a tag
+   * that has no unit class is returned unchanged. A placeholder with unitClass=anyUnits has no default unit,
+   * so its value converts only when a unit is written.
+   *
+   * In a unit class none of whose units has a conversionFactor (timeUnits in HED 8.0.0), an unmodified form of
+   * the default unit or of an SI unit of the class (s, second, seconds) converts with factor 1 (specification
+   * 3.2.8.4); a modified form (ms) or another unit (minute) does not convert.
+   *
+   * @returns The value in default units, or null if the tag takes no value, the value is not numeric, the unit is
+   *     invalid, the unit has no conversionFactor (such as month or year), or the value is a bare number on an
+   *     anyUnits placeholder.
+   */
+  public valueAsDefaultUnit(): number | null {
+    const takesValueTag = this.takesValueTag
+    if (takesValueTag === undefined || this._value === undefined || this._value === null) {
+      return null
+    }
+    const value = Number(this._value)
+    if (this._value === '' || !Number.isFinite(value)) {
+      return null
+    }
+    if (this._units === null) {
+      const acceptsAnyUnits = takesValueTag.unitClasses.some((unitClass) => unitClass.name === 'anyUnits')
+      return acceptsAnyUnits ? null : value
+    }
+    const factor = this._unit?.conversionFactor(this._units) ?? null
+    if (factor !== null) {
+      return value * factor
+    }
+    return this._isUnconvertedBaseUnit() ? value : null
+  }
+
+  /**
+   * Determine whether this tag's unit is a base unit of a unit class that defines no conversion factors.
+   *
+   * @returns True if no unit of the unit class holding this tag's unit has a conversionFactor and the unit is
+   *     written unmodified as the default unit or, when the default unit is itself an SI unit, as an SI unit of
+   *     that class (its other spelling: second beside s). A class whose default is not SI, such as intensityUnits
+   *     with default dB beside candela and cd, accepts only the default unit.
+   */
+  private _isUnconvertedBaseUnit(): boolean {
+    const unit = this._unit
+    const takesValueTag = this.takesValueTag
+    if (unit === null || takesValueTag === undefined || this._units === null) {
+      return false
+    }
+    const unitClass = this._expandUnitClasses(takesValueTag.unitClasses).find(
+      (candidate) => candidate.units.get(unit.name) === unit,
+    )
+    if (unitClass === undefined || unitClass.hasConversionFactors) {
+      return false
+    }
+    const defaultUnit = unitClass.defaultUnit
+    const isBaseUnit = unit === defaultUnit || (defaultUnit?.isSIUnit === true && unit.isSIUnit)
+    return isBaseUnit && unit.isUnmodifiedForm(this._units)
   }
 
   /**

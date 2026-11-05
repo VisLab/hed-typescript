@@ -7,15 +7,6 @@
  *
  */
 export const skippedTests = {
-  'temporal-tag-error-delay-not-convertible':
-    'A Delay whose unit has no conversionFactor (month) in a timeline file gives no TEMPORAL_TAG_ERROR.',
-  'temporal-tag-error-duration-not-convertible':
-    'A Duration whose unit has no conversionFactor (year) in a timeline file gives no TEMPORAL_TAG_ERROR.',
-  'temporal-tag-error-no-conversion-factor-in-8-0-0':
-    'Duration/2 minute under HED 8.0.0 in a timeline file gives no TEMPORAL_TAG_ERROR.',
-  'units-invalid-compound-units': 'Valid compound units such as cm-per-us give UNITS_INVALID.',
-  'units-invalid-any-units':
-    'Valid units on a unitClass=anyUnits placeholder (Quantity/3 ms, Quantity/3 dB) give UNITS_INVALID.',
   'bad-value-in-curly-column':
     'An invalid value in a column referenced in curly braces, in a row that does not substitute it, gives no error.',
   'value-invalid-date-time-format':
