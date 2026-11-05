@@ -24,8 +24,8 @@ const UNCLASSED_VALUE_SETS = ['value-text']
  * first class rejecting only characters does not allow, with that class (subject) and its character set names.
  */
 type ValueProblem =
-  | { msg: string; characters?: undefined }
-  | { msg?: undefined; characters: Array<[number, string]>; subject: string; names: string[] }
+  | { msg: string; characters?: never }
+  | { msg?: never; characters: Array<[number, string]>; subject: string; names: string[] }
 
 /**
  * A parsed HED tag.

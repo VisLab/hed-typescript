@@ -6,7 +6,7 @@ import { characterSets } from '../characterSets'
  * Why a value fails a value class: a broken whole-value rule, or the characters the class does not allow.
  */
 export type ValueClassProblem =
-  { rule: true; characters?: undefined } | { rule?: undefined; characters: Array<[number, string]> }
+  { rule: true; characters?: never } | { rule?: never; characters: Array<[number, string]> }
 
 /**
  * A schema value class.
