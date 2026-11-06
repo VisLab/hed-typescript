@@ -9,8 +9,6 @@
 export const skippedTests = {
   'bad-value-in-curly-column':
     'An invalid value in a column referenced in curly braces, in a row that does not substitute it, gives no error.',
-  'value-invalid-date-time-format':
-    'dateTimeClass values outside the BIDS Datetime format or calendar (2026-09-30T24:00:00, 2026-02-31) give no error.',
   'placeholder-invalid-after-extension':
     'Item/# and Item/Blech/# in a sidecar value column (alone or in a combo) give TAG_EXTENSION_INVALID, not PLACEHOLDER_INVALID.',
   'tag-extension-invalid-no-letter':
