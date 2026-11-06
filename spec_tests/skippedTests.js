@@ -6,7 +6,4 @@
  * was added, not a diagnosis. Set HED_RUN_SKIPPED=1 to run the listed cases anyway.
  *
  */
-export const skippedTests = {
-  'bad-value-in-curly-column':
-    'An invalid value in a column referenced in curly braces, in a row that does not substitute it, gives no error.',
-}
+export const skippedTests = {}
