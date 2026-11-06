@@ -1,6 +1,7 @@
 import SchemaEntryWithAttributes from './schemaEntryWithAttributes'
 import type SchemaAttribute from './attribute'
 import { characterSets } from '../characterSets'
+import { isExistingGregorianDate } from '../../utils/dateTime'
 
 /**
  * Why a value fails a value class: a broken whole-value rule, or the characters the class does not allow.
@@ -57,11 +58,16 @@ export default class SchemaValueClass extends SchemaEntryWithAttributes {
    * Say why a value fails this class, checking the whole-value rule before the characters, as hed-python does.
    *
    * @param value - A HED value.
-   * @returns null if the value is valid; `{rule: true}` if it is empty or breaks the class's whole-value rule;
-   *     otherwise the characters the class does not allow, as [index, character] pairs.
+   * @returns null if the value is valid; `{rule: true}` if it is empty, breaks the class's whole-value rule, or
+   *     (dateTimeClass) names a date that does not exist; otherwise the characters the class does not allow, as
+   *     [index, character] pairs.
    */
   public valueProblem(value: string): ValueClassProblem | null {
     if (value === '' || (this._wordRegex !== null && !this._wordRegex.test(value))) {
+      return { rule: true }
+    }
+    if (this.name === 'dateTimeClass' && !isExistingGregorianDate(value.slice(0, 10))) {
+      // The regular expression fixes the shape; the date must also exist in the Gregorian calendar.
       return { rule: true }
     }
     const characters = characterSets.problemCharacters(value, this.allowedNames)
