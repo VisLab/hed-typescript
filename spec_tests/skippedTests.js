@@ -9,10 +9,4 @@
 export const skippedTests = {
   'bad-value-in-curly-column':
     'An invalid value in a column referenced in curly braces, in a row that does not substitute it, gives no error.',
-  'placeholder-invalid-after-extension':
-    'Item/# and Item/Blech/# in a sidecar value column (alone or in a combo) give TAG_EXTENSION_INVALID, not PLACEHOLDER_INVALID.',
-  'tag-extension-invalid-no-letter':
-    'Extension terms with no letter (Item/Blech/3, Item/1-2, Item/42, Item/_, Item/-1, Item/ + U+00B0 or U+0663) give no error.',
-  'tag-extension-invalid-no-letter-8-2-0':
-    'Extension terms with no letter (Item/Blech/3, Item/1-2) under 8.2.0 give no error.',
 }
