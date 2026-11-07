@@ -80,6 +80,7 @@ export class BidsHedTsvValidator extends BidsValidator {
 
     // Valid the HED column by itself.
     this._validateHedColumn()
+    this._validateSplicedValueColumns()
     if (this.errors.length > 0) {
       return
     }
@@ -197,6 +198,53 @@ export class BidsHedTsvValidator extends BidsValidator {
 
     this.errors.push(...BidsHedIssue.fromHedIssues(errorIssues, this.tsvFile.file, { tsvLine: rowIndex }))
     this.warnings.push(...BidsHedIssue.fromHedIssues(warningIssues, this.tsvFile.file, { tsvLine: rowIndex }))
+  }
+
+  /**
+   * Validate the values of value columns that curly braces reference.
+   *
+   * A referenced column is spliced into other columns' strings rather than assembled on its own, so in a row
+   * whose selected template does not substitute it, its value would otherwise never be checked. Each distinct
+   * value is substituted into the column's sidecar string and checked at the tag level (no group rules), as a
+   * sidecar's own placeholder string is checked. A value that reaches a `Def` tag is also checked against the
+   * definition's contents.
+   */
+  private _validateSplicedValueColumns(): void {
+    const sidecar = this.tsvFile.mergedSidecar
+    if (!sidecar?.hasHedData || sidecar.columnSpliceReferences.size === 0) {
+      return
+    }
+    for (const columnName of sidecar.columnSpliceReferences) {
+      const columnData = sidecar.parsedHedData.get(columnName)
+      const columnValues = this.tsvFile.parsedTsv.get(columnName)
+      if (!(columnData instanceof ParsedHedString) || columnValues === undefined) {
+        continue
+      }
+      const checkedValues = new Set<string>()
+      columnValues.forEach((columnValue, rowIndexMinusTwo) => {
+        if (BidsHedTsvParser.nullSet.has(columnValue) || checkedValues.has(columnValue)) {
+          return
+        }
+        checkedValues.add(columnValue)
+        // A function replacer inserts the value literally: a value such as "$&" is data, not a replacement pattern.
+        const columnString = columnData.hedString.replace('#', () => columnValue)
+        const [parsedString, errorIssues, warningIssues] = parseHedString(
+          columnString,
+          this.hedSchemas,
+          false,
+          false,
+          false,
+        )
+        if (parsedString !== null) {
+          const defIssues = sidecar.definitions.validateDefs(parsedString, this.hedSchemas, false)
+          errorIssues.push(...defIssues.filter((issue) => issue.level === 'error'))
+          warningIssues.push(...defIssues.filter((issue) => issue.level === 'warning'))
+        }
+        const tsvLine = rowIndexMinusTwo + 2
+        this.errors.push(...BidsHedIssue.fromHedIssues(errorIssues, this.tsvFile.file, { tsvLine: tsvLine }))
+        this.warnings.push(...BidsHedIssue.fromHedIssues(warningIssues, this.tsvFile.file, { tsvLine: tsvLine }))
+      })
+    }
   }
 
   /**
@@ -367,7 +415,10 @@ export class BidsHedTsvValidator extends BidsValidator {
  * Class that performs basic parsing and splicing.
  */
 export class BidsHedTsvParser {
-  private static readonly nullSet = new Set([null, undefined, '', 'n/a'])
+  /**
+   * The cell values that count as missing when a column is spliced or checked.
+   */
+  static readonly nullSet = new Set([null, undefined, '', 'n/a'])
   private static readonly _braceRegEx = /\{([^{}]*?)}/g
 
   /**
@@ -406,6 +457,9 @@ export class BidsHedTsvParser {
   /**
    * Parse element HED strings.
    *
+   * The `Def` tags of each assembled string are evaluated against the sidecar's definitions, so a value that a
+   * value column substitutes into `Def/Name/#` is checked against the definition's contents.
+   *
    * @param elements - The objects representing tsv rows with their parsed HEd strings.
    * @returns The errors and warnings resulting in creating the parsed HED strings.
    */
@@ -425,6 +479,11 @@ export class BidsHedTsvParser {
         false,
         true,
       )
+      if (parsedHedString !== null) {
+        const defIssues = this.tsvFile.mergedSidecar.definitions.validateDefs(parsedHedString, this.hedSchemas, false)
+        errorIssues.push(...defIssues.filter((issue) => issue.level === 'error'))
+        warningIssues.push(...defIssues.filter((issue) => issue.level === 'warning'))
+      }
       element.parsedHedString = parsedHedString
       errors.push(...BidsHedIssue.fromHedIssues(errorIssues, this.tsvFile.file, { tsvLine: element.tsvLine }))
       warnings.push(...BidsHedIssue.fromHedIssues(warningIssues, this.tsvFile.file, { tsvLine: element.tsvLine }))
