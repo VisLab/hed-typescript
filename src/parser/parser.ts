@@ -8,7 +8,7 @@ import { type DefinitionManager } from './definitionManager'
 import ParsedHedString from './parsedHedString'
 import { ReservedChecker } from './reservedChecker'
 import HedStringSplitter from './splitter'
-import { generateIssue, type Issue } from '../issues/issues'
+import { generateIssue, type Issue, IssueError } from '../issues/issues'
 import { type HedSchemas } from '../schema/containers'
 import { type ReturnTupleWithErrorsAndWarnings } from '../utils/types'
 
@@ -87,8 +87,18 @@ class HedStringParser {
       return [null, parsingIssues, []]
     }
 
-    // Returns a parsed HED string unless empty
-    const parsedString = new ParsedHedString(this.hedString, parsedTags)
+    // Returns a parsed HED string unless empty. The constructor can throw IssueError (e.g. duplicateTag)
+    // when computing the normalized form, so we catch it here to preserve the return-value contract
+    // that lets callers attach BIDS context (tsvLine, sidecarKey) to the issue.
+    let parsedString: ParsedHedString
+    try {
+      parsedString = new ParsedHedString(this.hedString, parsedTags)
+    } catch (e) {
+      if (e instanceof IssueError) {
+        return [null, [e.issue], []]
+      }
+      throw e
+    }
     if (!parsedString) {
       return [null, [], []]
     }
