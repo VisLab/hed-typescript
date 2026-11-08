@@ -1,18 +1,18 @@
 name: Deploy documentation
 
 # The documentation site (Sphinx guides) and the API reference (TypeDoc) are built under docs/_build/html on
-# every push and pull request to main, so a broken docs build shows up before merge, and deployed from main only.
+# every push to main and on every pull request (PRs go into fix_required first, then main), so a broken docs
+# build shows up before merge; they are deployed from main only.
 on:
   push:
     branches:
       - main
   pull_request:
-    branches:
-      - main
 
-# Allow only one concurrent deployment, cancelling any previously running ones.
+# One run per ref at a time, cancelling a superseded one: pushes to main share one group, so only one deployment
+# runs at a time, and each pull request has its own group, so a PR check can never cancel a deployment.
 concurrency:
-  group: 'pages'
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 permissions: {}

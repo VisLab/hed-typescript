@@ -24,7 +24,7 @@ Run from the repo root, on Node.js 22 or later.
 | Coverage         | `npm run coverage`                                                                           |
 | Spelling         | `uvx typos --config .typos.toml --exclude spec_tests/hed-tests`                              |
 
-CI (`.github/workflows/`): `tests.yml` runs `npm test` and `npm run testSpecs` on Node 22, LTS, and current, and fails on any tracked file with CRLF line endings; `typos.yaml` runs the spelling check without the submodule; `coverage.yml` and `codeql.yml`; `reserved_tags.yml` (below); `deploy-pages.yml` builds the documentation site and API reference under `docs/_build/html` on every push and pull request to `main` and publishes them from `main`; `publish.yml` publishes to npm on a GitHub release.
+CI (`.github/workflows/`): `tests.yml` runs `npm test` and `npm run testSpecs` on Node 22, LTS, and current, and fails on any tracked file with CRLF line endings; `typos.yaml` runs the spelling check without the submodule; `coverage.yml` and `codeql.yml`; `reserved_tags.yml` (below); `deploy-pages.yml` builds the documentation site and API reference under `docs/_build/html` on every pull request and every push to `main`, and publishes them from `main` only; `publish.yml` publishes to npm on a GitHub release.
 
 The pre-commit hook (`.husky/pre-commit`) runs prettier on staged files under `src/` and then the whole `npm test`.
 

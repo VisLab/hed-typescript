@@ -9,8 +9,14 @@ document.addEventListener('DOMContentLoaded', function () {
       const href = link.getAttribute('href')
       if (!href) return
 
-      // Check if it's a GitHub link (edit or blob/view)
-      if (href.includes('github.com')) {
+      // Check if it's a GitHub link (edit or blob/view): compare the host, not a substring of the whole URL.
+      let host
+      try {
+        host = new URL(href, window.location.href).hostname
+      } catch {
+        return
+      }
+      if (host === 'github.com' || host === 'www.github.com') {
         // If it's the Edit link, hide it
         if (href.includes('/edit/')) {
           link.style.display = 'none'
