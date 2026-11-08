@@ -129,15 +129,9 @@ export const schemaBuildTestData = [
         schemaError: null,
       },
       {
-        testname: 'base-and-two-libraries-build',
-        explanation: '["8.3.0", "ts:testlib_1.0.2", "bg:testlib_1.0.2"] has a base and two libraries',
-        schemaVersion: { Name: 'BaseAndTwoTests', HEDVersion: ['8.3.0', 'ts:testlib_1.0.2', 'bg:testlib_1.0.2'] },
-        schemaError: null,
-      },
-      {
-        testname: 'no-base-and-two-libraries-build',
-        explanation: '["ts:testlib_1.0.2", "bg:testlib_1.0.2"] has a base and two libraries',
-        schemaVersion: { Name: 'TwoTests', HEDVersion: ['ts:testlib_1.0.2', 'bg:testlib_1.0.2'] },
+        testname: 'standard-partner-listed-with-library-build',
+        explanation: '["8.4.0", "lang_1.1.0"] lists the partner standard schema, which adds nothing',
+        schemaVersion: { Name: 'PartnerListed', HEDVersion: ['8.4.0', 'lang_1.1.0'] },
         schemaError: null,
       },
     ],
@@ -154,8 +148,8 @@ export const schemaBuildTestData = [
       },
       {
         testname: 'lazy-partnered-with wrong-standard-build',
-        explanation: '["testlib_2.0.0", "8.3.0"] has wrong standard schema',
-        schemaVersion: { Name: 'BadLazyPartnered', HEDVersion: ['testlib_2.0.0', '8.3.0'] },
+        explanation: '["lang_1.1.0", "8.3.0"] has wrong standard schema',
+        schemaVersion: { Name: 'BadLazyPartnered', HEDVersion: ['lang_1.1.0', '8.3.0'] },
         schemaError: new IssueError(
           generateIssue('differentWithStandard', { versions: JSON.stringify(['8.3.0', '8.4.0']) }),
         ),
