@@ -1,9 +1,10 @@
-import { assert } from 'chai'
+import chai from 'chai'
+const assert = chai.assert
 import { beforeAll, describe, it, jest } from '@jest/globals'
 
 import { buildSchemasFromVersion } from '../../src/schema/init'
 import { BidsSidecar, BidsTsvFile } from '../../src/bids'
-import { parseTSV } from '../../src/bids/tsvParser'
+import parseTSV from '../../src/bids/tsvParser'
 import { Definition, DefinitionManager } from '../../src/parser/definitionManager'
 import { parseHedString } from '../../src/parser/parser'
 import { ReservedChecker } from '../../src/parser/reservedChecker'
@@ -11,8 +12,7 @@ import reservedTagsData from '../../src/data/json/reservedTags.json'
 import { IssueError } from '../../src/issues/issues'
 import { checkFileVersion } from '../../src/utils/specFiles'
 
-// The rules of src/data/json/reservedTags.json (the specification's reserved_tags.json, section 3.2.8). The HED 8.0.0
-// time-unit conversion (hed-tests temporal-tag-error-no-conversion-factor-in-8-0-0) waits for the unit ports (#167).
+// The rules of src/data/json/reservedTags.json (the specification's reserved_tags.json, section 3.2.8).
 describe('Reserved tags from the published reserved_tags.json', () => {
   const schemaVersions = ['8.0.0', '8.1.0', '8.2.0', '8.4.0']
   const schemasByVersion = new Map()
@@ -214,6 +214,49 @@ describe('Reserved tags from the published reserved_tags.json', () => {
   describe('A Def-expand group with extra tags (DEF_EXPAND_INVALID f)', () => {
     it('is DEF_EXPAND_INVALID', () => {
       assert.deepEqual(validateString('(Def-expand/MyColor, (Label/Pie), Blue)'), ['DEF_EXPAND_INVALID'])
+    })
+  })
+
+  describe('Time conversion in a schema without conversion factors (8.0.0)', () => {
+    const timeline = (annotation) => `onset\tduration\tHED\n4.5\t0\t${annotation}\n`
+    it.each([
+      ['(Duration/3 s, (Red))', []],
+      ['(Duration/3 second, (Red))', []],
+      ['(Duration/3 seconds, (Red))', []],
+      ['(Duration/3, (Red))', []],
+      ['(Delay/3 s, (Blue))', []],
+      ['(Duration/300 ms, (Red))', ['TEMPORAL_TAG_ERROR']],
+      ['(Duration/2 minute, (Red))', ['TEMPORAL_TAG_ERROR']],
+    ])('timeline "%s" gives %j', (annotation, expected) => {
+      assert.deepEqual(validateEvents(timeline(annotation), {}, '8.0.0'), expected)
+    })
+
+    it('converts the default unit with factor 1', () => {
+      const [parsedString] = parseHedString('Duration/3 second', schemasByVersion.get('8.0.0'), false, false, false)
+      assert.strictEqual(parsedString.tags[0].valueAsDefaultUnit(), 3)
+    })
+
+    it('converts only the default unit and its SI spelling in another factorless class', () => {
+      // 8.0.0 weightUnits: default g (SI) with gram (SI) and pound (not SI). A class whose default is not SI
+      // (intensityUnits: dB beside candela and cd) accepts only the default; no 8.0.0 tag uses that class.
+      const convert = (text) =>
+        parseHedString(text, schemasByVersion.get('8.0.0'), false, false, false)[0].tags[0].valueAsDefaultUnit()
+      assert.strictEqual(convert('Weight/3 g'), 3)
+      assert.strictEqual(convert('Weight/3 gram'), 3)
+      assert.isNull(convert('Weight/3 pound'))
+      assert.isNull(convert('Weight/3 kg'))
+      // A compound default unit (speedUnits: m-per-s) is its own unmodified form; a modified component is not.
+      assert.strictEqual(convert('Speed/3 m-per-s'), 3)
+      assert.strictEqual(convert('Speed/3'), 3)
+      assert.isNull(convert('Speed/3 km-per-s'))
+    })
+
+    it('accepts any unit of the class in a descriptor table', () => {
+      assert.isEmpty(validateEvents('duration\tHED\n0\t(Duration/2 minute, (Red))\n', {}, '8.0.0'))
+    })
+
+    it('converts minutes in a schema with conversion factors', () => {
+      assert.isEmpty(validateEvents(timeline('(Duration/2 minute, (Red))'), {}, '8.4.0'))
     })
   })
 })
