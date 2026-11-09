@@ -1,8 +1,8 @@
 {
   "entryPoints": ["./src"],
   "entryPointStrategy": "expand",
-  "out": "docs/html",
-  "readme": "README.md",
-  "name": "HED JavaScript Library",
+  "out": "docs/_build/html/api",
+  "readme": "docs/api_readme.md",
+  "name": "hed-typescript API",
   "cleanOutputDir": true
 }

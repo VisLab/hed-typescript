@@ -1,0 +1,36 @@
+{% extends "!base.html" %}
+
+{%- block scripts %}
+  {{ super() }}
+
+  <!-- OSA Chat Widget (HED Assistant)
+       Privacy Note: This widget sends page content to an external AI service when
+       allowPageContext is enabled. The widget provides contextual help for the hed-typescript documentation.
+       Data sent: Page text content, user questions
+       Service: OSA Chat Widget (demo.osc.earth)
+  -->
+  <script>
+    // Define config before the widget script loads
+    window.osaChatConfig = {
+      communityId: 'hed',
+      title: 'HED Assistant',
+      initialMessage: 'Questions about validating HED with hed-typescript? Ask me!',
+      placeholder: 'Questions about hed-typescript?',
+      suggestedQuestions: [
+        'How do I validate a HED string in JavaScript?',
+        'How do I validate a BIDS dataset in the browser?',
+        'What do the HED validation issue codes mean?',
+        'How do hed-typescript and hed-javascript differ?'
+      ],
+      widgetInstructions: 'User is on the hed-typescript documentation, most likely looking for information about validating HED strings, BIDS sidecars, tabular files, or datasets with the hed-validator npm package in Node.js or the browser',
+      showExperimentalBadge: true,
+      allowPageContext: true,
+      pageContextDefaultEnabled: true
+    };
+  </script>
+  <script src="https://demo.osc.earth/osa-chat-widget.js"
+    crossorigin="anonymous"
+    defer
+    onload="window.OSAChatWidget && window.OSAChatWidget.setConfig(window.osaChatConfig)">
+  </script>
+{%- endblock scripts %}
