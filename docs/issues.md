@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-validator, issues, error codes, warnings, Issue, IssueError, BidsHedIssue, Appendix B, HED specification
 ---
 
-```{index} issues; error codes; Issue; IssueError; BidsHedIssue; Appendix B
+```{index} issues, error codes, Issue, IssueError, BidsHedIssue, Appendix B
 
 ```
 

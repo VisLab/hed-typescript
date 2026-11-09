@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-validator, hed-javascript, hed-typescript, differences, porting, factory methods
 ---
 
-```{index} hed-javascript; hed-typescript; differences; factory methods
+```{index} hed-javascript, hed-typescript, differences, factory methods
 
 ```
 

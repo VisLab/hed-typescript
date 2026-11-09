@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-validator, BIDS dataset, BidsDataset, BidsDirectoryAccessor, BidsWebAccessor, BidsFileAccessor, HEDVersion, dataset_description.json
 ---
 
-```{index} BIDS dataset; BidsDataset; BidsDirectoryAccessor; BidsWebAccessor; BidsFileAccessor; HEDVersion; buildBidsSchemas
+```{index} BIDS dataset, BidsDataset, BidsDirectoryAccessor, BidsWebAccessor, BidsFileAccessor, HEDVersion, buildBidsSchemas
 
 ```
 

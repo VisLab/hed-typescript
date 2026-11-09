@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-validator, BIDS, sidecar, events.tsv, tabular file, BidsSidecar, BidsTsvFile, curly braces, value columns
 ---
 
-```{index} BIDS sidecar; tabular file; BidsSidecar; BidsTsvFile; curly braces; value columns; column names
+```{index} BIDS sidecar, tabular file, BidsSidecar, BidsTsvFile, curly braces, value columns, column names
 
 ```
 

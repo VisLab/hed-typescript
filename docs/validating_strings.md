@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-validator, HED string, validation, parseStandaloneString, parseHedString, DefinitionManager, definitions, issues
 ---
 
-```{index} HED string; parseStandaloneString; parseHedString; parseHedStrings; DefinitionManager; definitions
+```{index} HED string, parseStandaloneString, parseHedString, parseHedStrings, DefinitionManager, definitions
 
 ```
 
@@ -29,7 +29,7 @@ Every validation function takes a schema collection, which `buildSchemasFromVers
 string:
 
 ```javascript
-const { buildSchemasFromVersion, parseStandaloneString } = require('hed-validator')
+const { buildSchemasFromVersion, parseHedString, parseStandaloneString } = require('hed-validator')
 
 async function main() {
   const schemas = await buildSchemasFromVersion('8.4.0')

@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-typescript, contributing, jest, hed-tests, conformance suite, prettier, eslint, pull requests, hed-javascript
 ---
 
-```{index} contributing; tests; hed-tests; spec tests; prettier; eslint; pull requests; porting
+```{index} contributing, tests, hed-tests, spec tests, prettier, eslint, pull requests, porting
 
 ```
 

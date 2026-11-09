@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-validator, npm install, CommonJS, ESM, Node.js, schema versions, bundled schemas, getLocalSchemaVersions
 ---
 
-```{index} installation; npm; CommonJS; ESM; schema versions; bundled schemas
+```{index} installation, npm, CommonJS, ESM, schema versions, bundled schemas
 
 ```
 

@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-validator, hed-typescript, validation, BIDS, Node.js, browser, hed-web, hedtools
 ---
 
-```{index} overview; hed-validator; validation levels; related tools
+```{index} overview, hed-validator, validation levels, related tools
 
 ```
 

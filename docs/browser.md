@@ -5,7 +5,7 @@ myst:
     keywords: HED, hed-validator, browser, bundler, Vite, webpack, ESM, BidsWebAccessor, hed-web
 ---
 
-```{index} browser; bundler; BidsWebAccessor; hed-web
+```{index} browser, bundler, BidsWebAccessor, hed-web
 
 ```
 
