@@ -56,7 +56,7 @@ tests/temp.spec.js
 # Build
 built/
 dist/
-docs/
+/docs/_build/
 
 # IDEs; .vscode/settings.json is committed (portable settings only)
 .idea/

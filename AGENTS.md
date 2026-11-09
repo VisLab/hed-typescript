@@ -8,22 +8,23 @@ Test framework: jest (transformed by babel-jest; test files are `*.spec.js`). Ne
 
 Run from the repo root, on Node.js 22 or later.
 
-| Task             | Command                                                                         |
-| ---------------- | ------------------------------------------------------------------------------- |
-| Install          | `npm ci` (its `prepare` script also installs the husky hook and builds `dist/`) |
-| Spec-test data   | `git submodule update --init` (fills `spec_tests/hed-tests`)                    |
-| Tests (the gate) | `npm test`                                                                      |
-| One test file    | `npx jest tests/otherTests/paths.spec.js`                                       |
-| JSON spec tests  | `npm run testSpecs`                                                             |
-| Lint             | `npm run lint`                                                                  |
-| Type check       | `npm run type-check`                                                            |
-| Format check     | `npx prettier --check src`                                                      |
-| Build            | `npm run build` (esbuild -> `dist/commonjs/` and `dist/esm/`)                   |
-| API docs         | `npm run docs` (typedoc -> `docs/html/`)                                        |
-| Coverage         | `npm run coverage`                                                              |
-| Spelling         | `uvx typos --config .typos.toml --exclude spec_tests/hed-tests`                 |
+| Task             | Command                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| Install          | `npm ci` (its `prepare` script also installs the husky hook and builds `dist/`)              |
+| Spec-test data   | `git submodule update --init` (fills `spec_tests/hed-tests`)                                 |
+| Tests (the gate) | `npm test`                                                                                   |
+| One test file    | `npx jest tests/otherTests/paths.spec.js`                                                    |
+| JSON spec tests  | `npm run testSpecs`                                                                          |
+| Lint             | `npm run lint`                                                                               |
+| Type check       | `npm run type-check`                                                                         |
+| Format check     | `npx prettier --check src`                                                                   |
+| Build            | `npm run build` (esbuild -> `dist/commonjs/` and `dist/esm/`)                                |
+| Docs site        | `pip install -r docs/requirements.txt`, then `sphinx-build -W -b html docs docs/_build/html` |
+| API docs         | `npm run docs` (typedoc -> `docs/_build/html/api/`)                                          |
+| Coverage         | `npm run coverage`                                                                           |
+| Spelling         | `uvx typos --config .typos.toml --exclude spec_tests/hed-tests`                              |
 
-CI (`.github/workflows/`): `tests.yml` runs `npm test` and `npm run testSpecs` on Node 22, LTS, and current, and fails on any tracked file with CRLF line endings; `typos.yaml` runs the spelling check without the submodule; `coverage.yml` and `codeql.yml`; `reserved_tags.yml` (below); `deploy-pages.yml` publishes the API docs from `main`; `publish.yml` publishes to npm on a GitHub release.
+CI (`.github/workflows/`): `tests.yml` runs `npm test` and `npm run testSpecs` on Node 22, LTS, and current, and fails on any tracked file with CRLF line endings; `typos.yaml` runs the spelling check without the submodule; `coverage.yml` and `codeql.yml`; `reserved_tags.yml` (below); `deploy-pages.yml` builds the documentation site and API reference under `docs/_build/html` on every pull request and every push to `main`, and publishes them from `main` only; `publish.yml` publishes to npm on a GitHub release.
 
 The pre-commit hook (`.husky/pre-commit`) runs prettier on staged files under `src/` and then the whole `npm test`.
 
@@ -40,7 +41,8 @@ Never quote pass or skip counts in a committed file: they change with every comm
 - `src/data/schemas/` - HED schema XML bundled into the package. `src/data/json/` - JSON data bundled into the package.
 - `tests/` - `otherTests/` (hand-written specs), `jsonTests/` (specs driven by `jsonTestData/`), fixtures in `bidsDemoData/` and `schemaData/`, helpers in `testHelpers/`.
 - `spec_tests/` - the runner for the hed-tests suite. `skippedTests.js` lists the cases this validator does not pass yet; remove an entry once its case passes.
-- `dist/`, `docs/` - generated and gitignored.
+- `docs/` - the documentation site (Sphinx, Markdown guides); `docs/api_readme.md` is the TypeDoc front page.
+- `dist/`, `docs/_build/` - generated and gitignored.
 - `.status/` - working notes. Gitignored; local to each machine.
 
 ## Conventions that differ from defaults
