@@ -1,6 +1,13 @@
 ---
-title: hed-javascript and hed-typescript
+myst:
+  html_meta:
+    description: 'The intended differences between the hed-javascript and hed-typescript implementations of the hed-validator package'
+    keywords: HED, hed-validator, hed-javascript, hed-typescript, differences, porting, factory methods
 ---
+
+```{index} hed-javascript, hed-typescript, differences, factory methods
+
+```
 
 # hed-javascript and hed-typescript
 
