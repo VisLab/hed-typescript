@@ -1,3 +1,12 @@
+.. meta::
+   :description: hed-typescript, the TypeScript source of the hed-validator npm package, validates HED annotations in HED strings, BIDS sidecars and tabular files, and BIDS datasets, in Node.js and browsers
+   :keywords: HED, hierarchical event descriptors, hed-validator, hed-typescript, TypeScript, JavaScript, validation, BIDS, Node.js, browser
+
+.. admonition:: Under development
+   :class: danger
+
+   These pages are under development.
+
 hed-typescript
 ==============
 
@@ -22,5 +31,15 @@ Working with hed-typescript
 .. toctree::
    :maxdepth: 2
 
+   Overview <overview>
+   Installation and versions <installation>
+   Validating HED strings <validating_strings>
+   Validating BIDS files <validating_bids_files>
+   Validating BIDS datasets <validating_datasets>
+   Using the package in the browser <browser>
+   Issues <issues>
+   Contributing <contributing>
    hed-javascript and hed-typescript <hed_javascript_and_hed_typescript>
    API reference <https://www.hedtags.org/hed-typescript/api/>
+
+* :ref:`genindex`
