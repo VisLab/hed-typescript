@@ -2,12 +2,14 @@ name: Deploy documentation
 
 # The documentation site (Sphinx guides) and the API reference (TypeDoc) are built under docs/_build/html on
 # every push to main and on every pull request (PRs go into fix_required first, then main), so a broken docs
-# build shows up before merge; they are deployed from main only.
+# build shows up before merge; they are deployed from main only. Running the workflow by hand
+# (workflow_dispatch) on main redeploys without a new push; on another branch it only builds.
 on:
   push:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 # One run per ref at a time, cancelling a superseded one: pushes to main share one group, so only one deployment
 # runs at a time, and each pull request has its own group, so a PR check can never cancel a deployment.
@@ -57,13 +59,13 @@ jobs:
         run: npm run docs
 
       - name: Upload artifact for deployment
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: ./docs/_build/html
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     permissions:
       pages: write
