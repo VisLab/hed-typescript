@@ -12,6 +12,9 @@ import { type HedSchemas } from '../../schema/containers'
 import { getMergedSidecarData, organizedPathsGenerator, parseRelativePath } from '../../utils/paths'
 import { parseJson } from '../../utils/string'
 
+/** Matches a "HED" key in raw JSON text, allowing whitespace before the colon. */
+const HED_KEY_PATTERN = /"HED"\s*:/
+
 type BidsFileAccessorConstructor<FileType> = {
   create(datasetRootDirectory: string | object): Promise<BidsFileAccessor<FileType>>
 }
@@ -205,7 +208,7 @@ export class BidsDataset<FileType> {
               )
               return sidecarIssues
             }
-            if (!jsonText.includes('"HED":')) {
+            if (!HED_KEY_PATTERN.test(jsonText)) {
               return sidecarIssues
             }
             try {
