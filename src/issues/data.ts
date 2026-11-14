@@ -521,6 +521,16 @@ const issueData: Record<string, IssueType> = {
     level: 'error',
     message: issueMessageTemplate`Column ${'position'} in the header of the tabular file has a blank name.`,
   },
+  emptyTsvLine: {
+    hedCode: 'TABULAR_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Line ${'line'} of the tabular file is empty; only the first line may be empty.`,
+  },
+  tsvCellCount: {
+    hedCode: 'TABULAR_INVALID',
+    level: 'error',
+    message: issueMessageTemplate`Line ${'line'} of the tabular file has ${'cells'} tab-separated cells, but the first line has ${'expected'}.`,
+  },
   paddedTsvValue: {
     hedCode: 'TABULAR_INVALID',
     level: 'error',
