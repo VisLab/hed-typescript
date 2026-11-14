@@ -529,7 +529,7 @@ const issueData: Record<string, IssueType> = {
   tsvCellCount: {
     hedCode: 'TABULAR_INVALID',
     level: 'error',
-    message: issueMessageTemplate`Line ${'line'} of the tabular file has ${'cells'} tab-separated cells, but the first line has ${'expected'}.`,
+    message: issueMessageTemplate`Line ${'line'} of the tabular file has a tab-separated cell count of ${'cells'}, but the first line has a count of ${'expected'}.`,
   },
   paddedTsvValue: {
     hedCode: 'TABULAR_INVALID',
