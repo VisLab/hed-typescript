@@ -133,7 +133,9 @@ Validating the tabular file also validates its sidecar, so an error in the sidec
 too. Rows are checked one at a time and then together: the temporal tags (`Onset`, `Offset`, `Inset`) must match up
 across rows, and rows with the same onset must not repeat a tag between them.
 
-A tabular file with no HED column and no sidecar annotation has nothing to check, and `validate` returns `[]`.
+A tabular file with no HED column and no sidecar annotation has nothing to check, and `validate` returns `[]`. A
+file whose first non-empty line has a cell `HED` (once trimmed) counts as having a HED column even when an empty or
+malformed first line hides it, so that line is reported.
 
 ### Values in value columns
 
@@ -181,6 +183,12 @@ prints
 TABULAR_INVALID paddedTsvColumn
 TABULAR_INVALID duplicateTsvColumn
 ```
+
+The first line is always the header: an empty first line is one blank column name. After the header, every line must
+have as many tab-separated cells as the first line (`tsvCellCount`) and must not be empty (`emptyTsvLine`); one line
+break at the end of the file is not an empty line, but two are. A line of tabs only, with the right number of cells,
+is a row of missing values. Each offending line is reported with its line number, and the rows are not checked
+further.
 
 The package also exports `parseTSV`, which splits TSV text into columns, and `findDuplicateHeaders`, which lists the
 repeated column names of TSV text, for callers that want to inspect a file before validating it.
