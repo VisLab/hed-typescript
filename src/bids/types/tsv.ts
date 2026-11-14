@@ -9,11 +9,14 @@ import { BidsFile, type FilePath } from './file'
 import {
   convertParsedTSVData,
   findHeaderProblems,
+  findRowProblems,
+  firstNonEmptyLineHasHed,
   isMissingTsvValue,
   parseTSV,
   parseTSVHeader,
   type OldParsedTSV,
   type ParsedTSV,
+  type TsvRowProblems,
 } from '../tsvParser'
 import { BidsSidecar } from './json'
 import BidsHedTsvValidator from '../validator/tsvValidator'
@@ -45,6 +48,22 @@ export class BidsTsvFile extends BidsFile {
    * The 1-based positions of the blank column names (TABULAR_INVALID).
    */
   public readonly blankColumns: number[]
+
+  /**
+   * The 1-based numbers of the empty lines other than the first (TABULAR_INVALID).
+   */
+  public readonly emptyLines: number[]
+
+  /**
+   * The lines other than the first whose number of cells differs from the first line's (TABULAR_INVALID).
+   */
+  public readonly badCellCounts: TsvRowProblems['badCellCounts']
+
+  /**
+   * Whether a cell of the first non-empty line of text TSV data is `HED` once trimmed, so the file carries HED even
+   * when its first line is malformed (specification 3.2.10).
+   */
+  private readonly _hedInFirstNonEmptyLine: boolean
 
   /**
    * HED strings in the "HED" column of the TSV data.
@@ -80,6 +99,12 @@ export class BidsTsvFile extends BidsFile {
     this.paddedColumns = padded
     this.blankColumns = blank
     this.duplicateColumns = duplicate
+    // A Map has no row structure, so it has no empty lines or wrong cell counts to report.
+    const { emptyLines, badCellCounts } =
+      tsvData instanceof Map ? { emptyLines: [], badCellCounts: [] } : findRowProblems(tsvData)
+    this.emptyLines = emptyLines
+    this.badCellCounts = badCellCounts
+    this._hedInFirstNonEmptyLine = typeof tsvData === 'string' && firstNonEmptyLineHasHed(tsvData)
     this.hedColumnHedStrings = this._parseHedColumn()
     this.mergedSidecar = new BidsSidecar(name, this.file, mergedDictionary, defManager)
   }
@@ -135,10 +160,12 @@ export class BidsTsvFile extends BidsFile {
    * @returns Whether this file has any HED data.
    */
   public override get hasHedData(): boolean {
-    // A padded "HED" header is still the HED column, so the file is checked and its header reported.
+    // A padded "HED" header is still the HED column, so the file is checked and its header reported. So is a "HED"
+    // cell in the first non-empty line of text data, which an empty first line would otherwise hide (3.2.10).
     return (
       this.parsedTsv.has('HED') ||
       this.paddedColumns.some((column) => stripNameWhitespace(column) === 'HED') ||
+      this._hedInFirstNonEmptyLine ||
       this.mergedSidecar.hasHedData
     )
   }
