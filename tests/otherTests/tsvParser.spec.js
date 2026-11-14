@@ -352,7 +352,7 @@ describe('Padded and blank TSV column names and sidecar keys', () => {
       assert.include(issues[0].issueMessage, 'Line 3 of the tabular file is empty')
       assert.include(
         issues[1].issueMessage,
-        'Line 4 of the tabular file has 1 tab-separated cells, but the first line has 2',
+        'Line 4 of the tabular file has a tab-separated cell count of 1, but the first line has a count of 2',
       )
     })
 
