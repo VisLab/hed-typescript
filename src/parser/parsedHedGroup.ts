@@ -191,7 +191,7 @@ export default class ParsedHedGroup extends ParsedHedSubstring {
     // Sort normalized items to ensure order independence
     const sortedNormalizedItems = normalizedItems.toSorted((a, b) => a.localeCompare(b))
 
-    const duplicates = getDuplicates(sortedNormalizedItems)
+    const duplicates = ParsedHedGroup.findRepeatedExpressions(this.tags)
     if (duplicates.length > 0) {
       IssueError.generateAndThrow('duplicateTag', {
         tags: '[' + duplicates.join('],[') + ']',
@@ -200,6 +200,23 @@ export default class ParsedHedGroup extends ParsedHedSubstring {
     }
     this._normalized = '(' + sortedNormalizedItems.join(',') + ')'
     return this._normalized
+  }
+
+  /**
+   * Find the repeated expressions among the items of one level of a HED string or tag group.
+   *
+   * @remarks
+   *
+   * Items are compared by their normalized forms, so under the case rule of specification 3.2.3 (3.2.7.4).
+   * Identical Definition groups are not repeated expressions (3.2.8.1): each is a definition of its own, and the
+   * definition manager decides whether copies of one name agree (DEFINITION_INVALID i).
+   *
+   * @param items - The items of one level.
+   * @returns The normalized forms that occur more than once, sorted, each listed once.
+   */
+  public static findRepeatedExpressions(items: ParsedHedSubstring[]): string[] {
+    const compared = items.filter((item) => !(item instanceof ParsedHedGroup && item.isDefinitionGroup))
+    return getDuplicates(compared.map((item) => item.normalized).toSorted((a, b) => a.localeCompare(b)))
   }
 
   /**
