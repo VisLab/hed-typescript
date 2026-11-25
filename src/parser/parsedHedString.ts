@@ -7,7 +7,7 @@ import ParsedHedColumnSplice from './parsedHedColumnSplice'
 import ParsedHedGroup from './parsedHedGroup'
 import type ParsedHedSubstring from './parsedHedSubstring'
 import ParsedHedTag from './parsedHedTag'
-import { filterByClass, getDuplicates } from './parseUtils'
+import { filterByClass } from './parseUtils'
 import { IssueError } from '../issues/issues'
 
 /**
@@ -103,7 +103,7 @@ export default class ParsedHedString {
 
     // Sort normalized items to ensure order independence
     const sortedNormalizedItems = normalizedItems.toSorted((a, b) => a.localeCompare(b))
-    const duplicates = getDuplicates(sortedNormalizedItems)
+    const duplicates = ParsedHedGroup.findRepeatedExpressions(this.parseTree)
     if (duplicates.length > 0) {
       IssueError.generateAndThrow('duplicateTag', { tags: '[' + duplicates.join('],[') + ']', string: this.hedString })
     }
