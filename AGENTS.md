@@ -24,7 +24,7 @@ Run from the repo root, on Node.js 22 or later.
 | Coverage         | `npm run coverage`                                                                           |
 | Spelling         | `uvx typos --config .typos.toml --exclude spec_tests/hed-tests`                              |
 
-CI (`.github/workflows/`): `tests.yml` runs `npm test` and `npm run testSpecs` on Node 22, LTS, and current, and fails on any tracked file with CRLF line endings; `typos.yaml` runs the spelling check without the submodule; `coverage.yml` and `codeql.yml`; `reserved_tags.yml` (below); `deploy-pages.yml` builds the documentation site and API reference under `docs/_build/html` on every pull request and every push to `main`, and publishes them from `main` only; `publish.yml` publishes to npm on a GitHub release.
+CI (`.github/workflows/`): `tests.yml` runs `npm test` and `npm run testSpecs` on Node 22, LTS, and current, and fails on any tracked file with CRLF line endings; `typos.yaml` runs the spelling check without the submodule; `coverage.yml` and `codeql.yml`; `reserved_tags.yml`, `character_sets.yml`, and `unit_plurals.yml` (below); `deploy-pages.yml` builds the documentation site and API reference under `docs/_build/html` on every pull request and every push to `main`, and publishes them from `main` only; `publish.yml` publishes to npm on a GitHub release.
 
 The pre-commit hook (`.husky/pre-commit`) runs prettier on staged files under `src/` and then the whole `npm test`.
 
@@ -56,7 +56,7 @@ Never quote pass or skip counts in a committed file: they change with every comm
 
 ## Rules that are easy to get wrong
 
-- `src/data/json/reservedTags.json` is a verbatim copy of hed-specification's `reserved_tags.json`. Never edit or reformat it (`.prettierignore` excludes it); replace it with the published file. `reserved_tags.yml` compares it byte for byte with hed-specification `main` weekly.
+- `src/data/json/reserved_tags.json`, `character_sets.json`, and `unit_plurals.json` are verbatim copies of the hed-specification files of the same names. Never edit or reformat them (`.prettierignore` excludes them); replace each with the published file. `reserved_tags.yml`, `character_sets.yml`, and `unit_plurals.yml` compare them byte for byte with hed-specification `main` weekly.
 - Two modules are Node-only and have browser twins, swapped by the `browser` field in `package.json`: `src/schema/loader.ts` -> `browserLoader.ts`, and `src/bids/accessors/directory.ts` -> `directory.browser.ts`. Anything that needs `fs` or another Node built-in goes behind one of them; `dist/esm/` must contain no `node:` import, because browser bundlers consume it.
 - Never edit files under `spec_tests/hed-tests/`; changes to the suite go to hed-tests, and this repo moves the submodule pin.
 - Pull requests go to `fix_required`, not `main`; `fix_required` reaches `main` by its own pull request.

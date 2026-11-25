@@ -37,8 +37,7 @@ replacement for each, and the build of `dist/esm/` uses the replacements:
 | `src/bids/accessors/directory.ts` | `src/bids/accessors/directory.browser.ts` | `BidsDirectoryAccessor.create` throws; use `BidsWebAccessor` instead.       |
 
 The same field maps `fs` to `false`, so a bundler never tries to include it. As a result, `dist/esm/` imports no
-Node.js built-in module, and needs no polyfills. Its only import of another package is `pluralize`, which npm
-installs as a dependency.
+Node.js built-in module, and needs no polyfills.
 
 The exported names are the same in both builds, so code written against the package compiles for either.
 
