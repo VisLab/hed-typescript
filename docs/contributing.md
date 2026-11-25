@@ -79,9 +79,9 @@ this validator, as a HED string, a sidecar, a tabular file, and a tabular file w
 - A module that needs the Node.js file system goes behind one of the two modules with browser replacements (see
   [Using the package in the browser](browser.md#the-browser-build)), so that `dist/esm/` stays free of Node.js
   imports.
-- Two data files are verbatim copies of files that hed-specification publishes, and are never edited by hand:
-  `src/data/json/reservedTags.json` and `src/data/json/characterSets.json`. Weekly workflows compare each with
-  hed-specification `main`.
+- Three data files are verbatim copies of files that hed-specification publishes, and are never edited by hand:
+  `src/data/json/reserved_tags.json`, `src/data/json/character_sets.json`, and `src/data/json/unit_plurals.json`.
+  Weekly workflows compare each with hed-specification `main`.
 
 ## Pull requests
 
