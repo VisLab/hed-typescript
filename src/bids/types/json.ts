@@ -7,7 +7,7 @@ import { parseHedString } from '../../parser/parser'
 import ParsedHedString from '../../parser/parsedHedString'
 import { BidsFile, type FilePath } from './file'
 import BidsHedSidecarValidator from '../validator/sidecarValidator'
-import { IssueError, addIssueParameters, type Issue } from '../../issues/issues'
+import { IssueError, addIssueParameters, generateIssue, type Issue } from '../../issues/issues'
 import { DefinitionManager, Definition } from '../../parser/definitionManager'
 import { type HedSchemas } from '../../schema/containers'
 import type ParsedHedColumnSplice from '../../parser/parsedHedColumnSplice'
@@ -430,6 +430,12 @@ export class BidsSidecarKey {
    * @returns Errors due for the value.
    */
   private _parseValueString(hedSchemas: HedSchemas, fullValidation: boolean): [Issue[], Issue[]] {
+    // The annotation of a value entry has exactly one # (specification 3.2.9.2), so an empty, blank or n/a one is
+    // PLACEHOLDER_INVALID (c).
+    if (this.valueString.trim() === '' || this.valueString === 'n/a') {
+      this.parsedValueString = null
+      return [[generateIssue('missingPlaceholder', { string: this.valueString, sidecarKey: this.name })], []]
+    }
     const [parsedString, errorIssues, warningIssues] = parseHedString(
       this.valueString,
       hedSchemas,
@@ -449,7 +455,7 @@ export class BidsSidecarKey {
    * @returns A list of error issues and warning issues.
    */
   private _parseCategory(hedSchemas: HedSchemas, fullValidation: boolean): [Issue[], Issue[]] {
-    this.parsedCategoryMap = new Map<string, ParsedHedString>()
+    this.parsedCategoryMap = new Map<string, ParsedHedString | null>()
     const errors = []
     const warnings = []
 
@@ -460,6 +466,16 @@ export class BidsSidecarKey {
           sidecarKey: this.name,
           filePath: this.sidecar?.file?.path,
         })
+      }
+      if (string === 'n/a') {
+        // A column value with no HED annotation has an entry but contributes nothing to a row (specification 3.2.9.2).
+        this.parsedCategoryMap.set(value, null)
+        continue
+      }
+      if (string.trim() === '') {
+        errors.push(generateIssue('emptySidecarCategoricalAnnotation', { categoricalKey: JSON.stringify(value) }))
+        this.parsedCategoryMap.set(value, null)
+        continue
       }
       const [parsedString, errorIssues, warningIssues] = parseHedString(string, hedSchemas, true, true, fullValidation)
       this.parsedCategoryMap.set(value, parsedString)
@@ -500,6 +516,6 @@ export class BidsSidecarKey {
    * Whether this key is a value key.
    */
   public get isValueKey(): boolean {
-    return Boolean(this.valueString)
+    return typeof this.valueString === 'string'
   }
 }
