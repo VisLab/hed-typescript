@@ -44,7 +44,7 @@ export class BidsHedSidecarValidator extends BidsValidator {
     }
 
     this.errors.push(...this._validateStrings(), ...this._validateCurlyBraces())
-    if (errorIssues.length > 0) {
+    if (this.errors.length > 0) {
       return
     }
 
