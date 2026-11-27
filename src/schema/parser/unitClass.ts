@@ -1,5 +1,5 @@
 import { getElementName, type HedSchemaXMLCollection, type DefinitionElement, HedSchemaXMLObject } from '../xmlType'
-import { SchemaDefinitionEntryParser } from './schemaEntry'
+import { getDefinitionElements, SchemaDefinitionEntryParser } from './schemaEntry'
 
 import type SchemaUnitModifier from '../entries/unitModifier'
 import type SchemaAttribute from '../entries/attribute'
@@ -30,8 +30,8 @@ export default class UnitClassParser extends SchemaDefinitionEntryParser<SchemaU
     }
   }
 
-  protected override _getDefinitions(schemaXml: HedSchemaXMLObject): Iterable<DefinitionElement> | undefined {
-    return schemaXml.HED.unitClassDefinitions.unitClassDefinition
+  protected override _getDefinitions(schemaXml: HedSchemaXMLObject): DefinitionElement[] {
+    return getDefinitionElements(schemaXml.HED, 'unitClass')
   }
 
   protected override _buildEntry(
@@ -50,11 +50,7 @@ export default class UnitClassParser extends SchemaDefinitionEntryParser<SchemaU
   }
 
   private parseUnits(schemaXml: HedSchemaXMLObject): void {
-    const unitClassElements = schemaXml.HED.unitClassDefinitions.unitClassDefinition
-    if (!unitClassElements) {
-      return
-    }
-    for (const element of unitClassElements) {
+    for (const element of getDefinitionElements(schemaXml.HED, 'unitClass')) {
       const elementName = getElementName(element)
       this.unitClassUnits = this.unitClassesUnits.get(elementName) ?? new Map<string, SchemaUnit>()
       if (element.unit === undefined) {

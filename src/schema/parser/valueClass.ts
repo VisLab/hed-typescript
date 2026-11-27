@@ -1,6 +1,6 @@
 import semver from 'semver'
 
-import { SchemaDefinitionEntryParser } from './schemaEntry'
+import { getDefinitionElements, SchemaDefinitionEntryParser } from './schemaEntry'
 import type { DefinitionElement, HedSchemaXMLCollection, HedSchemaXMLObject } from '../xmlType'
 
 import { characterSets } from '../characterSets'
@@ -13,8 +13,8 @@ export default class ValueClassParser extends SchemaDefinitionEntryParser<Schema
     super(xmlCollection, attributes)
   }
 
-  protected override _getDefinitions(schemaXml: HedSchemaXMLObject): Iterable<DefinitionElement> | undefined {
-    return schemaXml.HED.valueClassDefinitions.valueClassDefinition
+  protected override _getDefinitions(schemaXml: HedSchemaXMLObject): DefinitionElement[] {
+    return getDefinitionElements(schemaXml.HED, 'valueClass')
   }
 
   protected override _buildEntry(

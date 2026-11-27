@@ -1,5 +1,5 @@
 import type { DefinitionElement, HedSchemaXMLCollection, HedSchemaXMLObject } from '../xmlType'
-import { SchemaDefinitionEntryParser } from './schemaEntry'
+import { getDefinitionElements, SchemaDefinitionEntryParser } from './schemaEntry'
 
 import type SchemaEntryManager from '../entries/schemaEntryManager'
 import type SchemaAttribute from '../entries/attribute'
@@ -10,8 +10,8 @@ export default class UnitModifierParser extends SchemaDefinitionEntryParser<Sche
     super(xmlCollection, attributes)
   }
 
-  protected override _getDefinitions(schemaXml: HedSchemaXMLObject): Iterable<DefinitionElement> | undefined {
-    return schemaXml.HED.unitModifierDefinitions.unitModifierDefinition
+  protected override _getDefinitions(schemaXml: HedSchemaXMLObject): DefinitionElement[] {
+    return getDefinitionElements(schemaXml.HED, 'unitModifier')
   }
 
   protected override _buildEntry(
