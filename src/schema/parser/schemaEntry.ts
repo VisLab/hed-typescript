@@ -8,10 +8,49 @@ import {
   type NamedElement,
   type HedSchemaXMLCollection,
   type HedSchemaXMLObject,
+  type HedSchemaRootElement,
+  type PropertyElement,
+  type SchemaAttributeElement,
+  type UnitClassElement,
   getElementDescription,
 } from '../xmlType'
 
 import { IssueError } from '../../issues/issues'
+
+/**
+ * The element type of each definition category.
+ */
+type DefinitionElementTypes = {
+  unitClass: UnitClassElement
+  unitModifier: DefinitionElement
+  valueClass: DefinitionElement
+  schemaAttribute: SchemaAttributeElement
+  property: PropertyElement
+}
+
+/**
+ * Retrieve the definition elements of a category in one schema.
+ *
+ * @param rootElement - The root XML element of the schema.
+ * @param category - The definition category (e.g. "unitClass").
+ * @returns The definition elements.
+ */
+export function getDefinitionElements<K extends keyof DefinitionElementTypes>(
+  rootElement: HedSchemaRootElement,
+  category: K,
+): DefinitionElementTypes[K][] {
+  const categoryTagName = `${category}Definition`
+  const categoryParentTagName = `${categoryTagName}s`
+  // An empty section (<propertyDefinitions/> in an unpartnered library) has no definition elements.
+  const sections = rootElement as unknown as Record<string, Record<string, unknown> | undefined>
+  const definitions = sections[categoryParentTagName]?.[categoryTagName]
+  if (definitions === undefined || definitions === null) {
+    return []
+  }
+  return (Array.isArray(definitions) ? definitions : [definitions]).filter(
+    (element) => typeof element === 'object',
+  ) as DefinitionElementTypes[K][]
+}
 
 /**
  * A parser for a specific {@link SchemaEntry} subtype.
@@ -184,9 +223,6 @@ export abstract class SchemaDefinitionEntryParser<
 > extends SchemaEntryWithAttributesParser<T> {
   protected override _parseSchema(schemaXml: HedSchemaXMLObject): void {
     const definitions = this._getDefinitions(schemaXml)
-    if (!definitions) {
-      return
-    }
     const [booleanAttributeDefinitions, valueAttributeDefinitions, descriptions] = this._parseDefinitions(definitions)
     this._addInLibrary(schemaXml, valueAttributeDefinitions, (name) => this.entryTypeMap.has(name))
     for (const [name, valueAttributes] of valueAttributeDefinitions) {
@@ -196,7 +232,7 @@ export abstract class SchemaDefinitionEntryParser<
     }
   }
 
-  protected abstract _getDefinitions(schemaXml: HedSchemaXMLObject): Iterable<DefinitionElement> | undefined
+  protected abstract _getDefinitions(schemaXml: HedSchemaXMLObject): DefinitionElement[]
 
   protected abstract _buildEntry(
     name: string,

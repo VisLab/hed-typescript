@@ -1,6 +1,6 @@
 import semver from 'semver'
 
-import { SchemaEntryParser } from './schemaEntry'
+import { getDefinitionElements, SchemaEntryParser } from './schemaEntry'
 import SchemaProperty from '../entries/property'
 import { getElementDescription, getElementName, type HedSchemaXMLCollection, type HedSchemaXMLObject } from '../xmlType'
 
@@ -23,11 +23,7 @@ export default class PropertyParser extends SchemaEntryParser<SchemaProperty> {
    * @param schemaXml - The XML for a specific schema.
    */
   protected override _parseSchema(schemaXml: HedSchemaXMLObject): void {
-    const propertyDefinitions = schemaXml.HED.propertyDefinitions.propertyDefinition
-    if (!propertyDefinitions) {
-      return
-    }
-    for (const definition of propertyDefinitions) {
+    for (const definition of getDefinitionElements(schemaXml.HED, 'property')) {
       const propertyName = getElementName(definition)
       const propertyDescription = getElementDescription(definition)
       this.addEntry(propertyName, new SchemaProperty(propertyName, propertyDescription))
