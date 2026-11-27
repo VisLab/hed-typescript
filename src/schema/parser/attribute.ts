@@ -1,5 +1,5 @@
 import { getElementDescription, getElementName, type HedSchemaXMLCollection, type HedSchemaXMLObject } from '../xmlType'
-import { SchemaEntryParser } from './schemaEntry'
+import { getDefinitionElements, SchemaEntryParser } from './schemaEntry'
 import type SchemaEntryManager from '../entries/schemaEntryManager'
 import type SchemaProperty from '../entries/property'
 import SchemaAttribute from '../entries/attribute'
@@ -27,11 +27,7 @@ export default class AttributeParser extends SchemaEntryParser<SchemaAttribute> 
    * @param schemaXml - The XML for a specific schema.
    */
   protected override _parseSchema(schemaXml: HedSchemaXMLObject): void {
-    const attributeDefinitions = schemaXml.HED.schemaAttributeDefinitions.schemaAttributeDefinition
-    if (!attributeDefinitions) {
-      return
-    }
-    for (const definition of attributeDefinitions) {
+    for (const definition of getDefinitionElements(schemaXml.HED, 'schemaAttribute')) {
       const attributeName = getElementName(definition)
       const attributeDescription = getElementDescription(definition)
       const propertyElements = definition.property ?? []

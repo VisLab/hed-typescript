@@ -4,9 +4,9 @@ export type AttributeValue = string | number
 export type AttributeElement = NamedElement & { value?: { _: AttributeValue }[] }
 export type DefinitionElement = NamedElement & DescribedElement & { attribute?: AttributeElement[] }
 export type NodeElement = DefinitionElement & { node?: NodeElement[]; $parent?: NodeElement | null }
-type UnitClassElement = DefinitionElement & { unit: DefinitionElement[] }
-type SchemaAttributeElement = NamedElement & DescribedElement & { property: AttributeElement[] }
-type PropertyElement = NamedElement & DescribedElement
+export type UnitClassElement = DefinitionElement & { unit: DefinitionElement[] }
+export type SchemaAttributeElement = NamedElement & DescribedElement & { property: AttributeElement[] }
+export type PropertyElement = NamedElement & DescribedElement
 
 export type HedSchemaRootElement = {
   $: { version: string; library?: string; unmerged?: boolean; withStandard?: string }
