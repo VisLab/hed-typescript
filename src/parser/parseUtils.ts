@@ -148,3 +148,30 @@ export function cleanupEmpties(stringIn: string): string {
   result = result.replace(/\(\s*,+/g, '(')
   return result.trim()
 }
+
+/**
+ * The values that remove a curly-brace reference instead of replacing it (specification 3.2.9.3 rule 3).
+ */
+const referenceRemovalValues = new Set([null, undefined, '', 'n/a'])
+
+/**
+ * Replace the curly-brace column references in a sidecar annotation.
+ *
+ * A reference whose replacement is missing, empty, or `n/a` is removed with the commas and parentheses it leaves
+ * behind (specification 3.2.9.3 rule 3). Row assembly and the sidecar check of rule 10 both use this function, so a
+ * reference is removed in the same way in both.
+ *
+ * @param annotation - A sidecar annotation, possibly with curly-brace references.
+ * @param lookup - The replacement for a referenced column name, or undefined or null to remove the reference.
+ * @returns The annotation with every reference replaced or removed.
+ */
+export function replaceColumnReferences(
+  annotation: string,
+  lookup: (columnName: string) => string | null | undefined,
+): string {
+  const result = annotation.replace(/\{([^{}]*?)}/g, (match, columnName: string) => {
+    const replacement = lookup(columnName)
+    return referenceRemovalValues.has(replacement) ? '' : (replacement as string)
+  })
+  return cleanupEmpties(result)
+}

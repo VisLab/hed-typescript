@@ -12,7 +12,7 @@ import { parseHedString, parseStandaloneString } from '../../parser/parser'
 import ParsedHedString from '../../parser/parsedHedString'
 import { generateIssue } from '../../issues/issues'
 import { ReservedChecker } from '../../parser/reservedChecker'
-import { cleanupEmpties, getTagListString } from '../../parser/parseUtils'
+import { getTagListString, replaceColumnReferences } from '../../parser/parseUtils'
 import { EventManager } from '../../parser/eventManager'
 import { type HedSchemas } from '../../schema/containers'
 
@@ -434,7 +434,6 @@ export class BidsHedTsvParser {
    * The cell values that count as missing when a column is spliced or checked.
    */
   static readonly nullSet = new Set([null, undefined, '', 'n/a'])
-  private static readonly _braceRegEx = /\{([^{}]*?)}/g
 
   /**
    * The BIDS TSV file being parsed.
@@ -643,13 +642,7 @@ export class BidsHedTsvParser {
    * @returns The fully resolved HED string with no splices.
    */
   private _replaceSplices(unspliced: string, columnMap: Map<string, string | undefined>): string {
-    const result = unspliced.replace(BidsHedTsvParser._braceRegEx, (match, content: string) => {
-      // Resolve the replacement value
-      const resolved = columnMap.get(content) ?? ''
-      // Replace with resolved value or empty string if in nullSet
-      return BidsHedTsvParser.nullSet.has(resolved) ? '' : resolved
-    })
-    return cleanupEmpties(result)
+    return replaceColumnReferences(unspliced, (columnName) => columnMap.get(columnName))
   }
 }
 
