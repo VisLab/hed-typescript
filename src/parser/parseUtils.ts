@@ -170,7 +170,8 @@ export function replaceColumnReferences(
   lookup: (columnName: string) => string | null | undefined,
 ): string {
   const result = annotation.replace(/\{([^{}]*?)}/g, (match, columnName: string) => {
-    const replacement = lookup(columnName)
+    // The tokenizer trims the name inside the braces, so "{ color }" refers to the column "color".
+    const replacement = lookup(columnName.trim())
     return referenceRemovalValues.has(replacement) ? '' : (replacement as string)
   })
   return cleanupEmpties(result)
